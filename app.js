@@ -405,20 +405,68 @@ function renderDashboard() {
       <div class="food-deco">${c.icon}</div>
     </div>`).join('');
 
-  const stationTotals = visibleStations.map(s=>({
-    name: s.name,
-    total: entries.filter(e=>e.stationId===s.id).reduce((sum,e)=>sum+totalForEntry(e),0)
-  }));
+  // Build station data: actual vs required
+  const stationTotals = visibleStations.map(s=>{
+    const stEntries = entries.filter(e=>e.stationId===s.id);
+    const actual = stEntries.length
+      ? Math.round(stEntries.reduce((sum,e)=>sum+totalForEntry(e),0) / stEntries.length)
+      : 0;
+    const required = state.roles.reduce((sum,r)=>sum+((s.minStaff||{})[r]||0),0);
+    return { id:s.id, name:s.name, actual, required, stEntries };
+  });
+
   destroyChart(chartStation);
   chartStation = new Chart(document.getElementById('chartByStation'),{
     type:'bar',
-    data:{ labels:stationTotals.map(s=>s.name), datasets:[{
-      label:'נוכחות', data:stationTotals.map(s=>s.total),
-      backgroundColor:C.palette.map(c=>c+'bb'), borderColor:C.palette, borderWidth:1, borderRadius:5
-    }]},
-    options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{ x:{ticks:{color:C.tick,font:{family:'Heebo'}},grid:{color:C.grid}}, y:{ticks:{color:C.tick},grid:{color:C.grid}} }
+    data:{
+      labels: stationTotals.map(s=>s.name),
+      datasets:[
+        {
+          label:'בפועל (ממוצע יומי)',
+          data: stationTotals.map(s=>s.actual),
+          backgroundColor: C.palette.map(c=>c+'cc'),
+          borderColor: C.palette,
+          borderWidth:2, borderRadius:5
+        },
+        {
+          label:'נדרש לפי חוזה',
+          data: stationTotals.map(s=>s.required),
+          backgroundColor: 'rgba(180,180,180,0.15)',
+          borderColor: 'rgba(180,180,180,0.6)',
+          borderWidth:2, borderRadius:5,
+          borderDash:[4,4]
+        }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{
+          display:true, position:'top',
+          labels:{color:C.tick, font:{family:'Heebo',size:11}, padding:12, boxWidth:14}
+        },
+        tooltip:{
+          callbacks:{
+            afterBody: (items) => {
+              const idx = items[0].dataIndex;
+              const s = stationTotals[idx];
+              const pct = s.required>0 ? Math.round((s.actual/s.required)*100) : 100;
+              return ['', `עמידה: ${pct}%`, 'לחץ לפירוט לפי תפקיד'];
+            }
+          }
+        }
+      },
+      onClick:(evt, elements)=>{
+        if(elements.length>0){
+          const idx = elements[0].index;
+          openStationDrilldown(stationTotals[idx], entries, C);
+        }
+      },
+      scales:{
+        x:{ticks:{color:C.tick,font:{family:'Heebo'}},grid:{color:C.grid}},
+        y:{ticks:{color:C.tick},grid:{color:C.grid},
+          title:{display:true,text:'עובדים',color:C.tick,font:{family:'Heebo',size:11}}}
+      }
     }
   });
 
@@ -476,6 +524,98 @@ function renderDashboard() {
       return `<tr><td><strong>${station.name}</strong></td>${state.roles.map(r=>`<td>${roleSums[r]||0}</td>`).join('')}<td><strong>${sTotal}</strong></td><td><span class="badge ${cls}">${pct}%</span></td></tr>`;
     }).join('')}</tbody></table>`;
 }
+
+
+// ─────────────────────────────────────────────
+// STATION DRILLDOWN MODAL
+// ─────────────────────────────────────────────
+let drillChart = null;
+
+function openStationDrilldown(stationData, entries, C) {
+  const modal = document.getElementById('drilldownModal');
+  const title = document.getElementById('drilldownTitle');
+  const station = getStation(stationData.id);
+  title.textContent = '📊 ' + stationData.name;
+
+  const stEntries = entries.filter(e=>e.stationId===stationData.id);
+  const days = stEntries.length || 1;
+
+  const roleData = state.roles.map(role => {
+    const avgActual = Math.round(stEntries.reduce((s,e)=>s+(e.counts[role]||0),0) / days);
+    const required = station ? ((station.minStaff||{})[role]||0) : 0;
+    return { role, avgActual, required };
+  }).filter(r => r.avgActual > 0 || r.required > 0);
+
+  // Summary line
+  const pct = stationData.required > 0
+    ? Math.round((stationData.actual / stationData.required) * 100) : 100;
+  const pctColor = pct>=90?'var(--green)':pct>=70?'var(--orange)':'var(--red)';
+  document.getElementById('drilldownSummary').innerHTML =
+    `ממוצע יומי: <strong>${stationData.actual}</strong> עובדים &nbsp;|&nbsp; נדרש: <strong>${stationData.required}</strong> &nbsp;|&nbsp; עמידה: <strong style="color:${pctColor}">${pct}%</strong>`;
+
+  destroyChart(drillChart);
+  const canvas = document.getElementById('drilldownChart');
+  drillChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: roleData.map(r => roleEmoji(r.role) + ' ' + r.role),
+      datasets: [
+        {
+          label: 'בפועל (ממוצע יומי)',
+          data: roleData.map(r => r.avgActual),
+          backgroundColor: roleData.map((r,i) => C.palette[i%C.palette.length]+'cc'),
+          borderColor:     roleData.map((r,i) => C.palette[i%C.palette.length]),
+          borderWidth:2, borderRadius:4
+        },
+        {
+          label: 'נדרש לפי חוזה',
+          data: roleData.map(r => r.required),
+          backgroundColor: 'rgba(180,180,180,0.12)',
+          borderColor: 'rgba(180,180,180,0.5)',
+          borderWidth:2, borderRadius:4
+        }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      indexAxis: 'y',
+      plugins:{
+        legend:{display:true,position:'top',labels:{color:C.tick,font:{family:'Heebo',size:11},padding:10,boxWidth:12}},
+        tooltip:{
+          callbacks:{
+            afterLabel:(item)=>{
+              if(item.datasetIndex===0){
+                const r = roleData[item.dataIndex];
+                if(r.required>0){
+                  const p=Math.round((r.avgActual/r.required)*100);
+                  return `עמידה: ${p}%`;
+                }
+              }
+              return '';
+            }
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{color:C.tick},grid:{color:C.grid}},
+        y:{ticks:{color:C.tick,font:{family:'Heebo',size:12}},grid:{color:C.grid}}
+      }
+    }
+  });
+
+  modal.style.display='flex';
+}
+
+document.getElementById('drilldownClose').addEventListener('click',()=>{
+  document.getElementById('drilldownModal').style.display='none';
+  destroyChart(drillChart); drillChart=null;
+});
+document.getElementById('drilldownModal').addEventListener('click', e=>{
+  if(e.target===document.getElementById('drilldownModal')){
+    document.getElementById('drilldownModal').style.display='none';
+    destroyChart(drillChart); drillChart=null;
+  }
+});
 
 function destroyChart(chart) { if(chart){try{chart.destroy();}catch(e){}} }
 document.getElementById('dashboardPeriod').addEventListener('change', renderDashboard);
