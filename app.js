@@ -60,6 +60,70 @@ function roleEmoji(role) { return ROLE_EMOJIS[role] || '👤'; }
 const STORAGE_KEY = 'catering_tracker_v1';
 const SESSION_KEY = 'catering_session';
 
+// ─────────────────────────────────────────────
+// GOOGLE SHEETS SYNC
+// ─────────────────────────────────────────────
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbz2k08tbmbuAwhCIoNrnMl-uXsxIzk02Rt_R0Jxj9F2atlS8pjQmb_9FXgpAgI-mA5J9w/exec';
+let syncTimeout = null;
+let syncStatus = 'idle'; // idle | saving | saved | error
+
+function scheduleSave() {
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(syncToSheets, 1500);
+}
+
+async function syncToSheets() {
+  setSyncStatus('saving');
+  try {
+    const resp = await fetch(SHEETS_URL, {
+      method: 'POST',
+      body: JSON.stringify(state),
+      headers: { 'Content-Type': 'text/plain' }
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    setSyncStatus('saved');
+  } catch(e) {
+    console.warn('Sync error:', e);
+    setSyncStatus('error');
+  }
+}
+
+async function loadFromSheets() {
+  setSyncStatus('saving');
+  try {
+    const resp = await fetch(SHEETS_URL + '?t=' + Date.now());
+    const text = await resp.text();
+    if (!text || text === 'Host not in allowlist') throw new Error('no data');
+    const parsed = JSON.parse(text);
+    if (parsed && parsed.roles && parsed.stations) {
+      // Merge: keep remote state but ensure users array exists
+      if (!parsed.users || parsed.users.length === 0) {
+        parsed.users = state.users.length ? state.users : defaultState().users;
+      }
+      state = parsed;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      setSyncStatus('saved');
+      return true;
+    }
+  } catch(e) {
+    console.warn('Load from sheets error:', e);
+  }
+  setSyncStatus('idle');
+  return false;
+}
+
+function setSyncStatus(status) {
+  syncStatus = status;
+  const el = document.getElementById('syncIndicator');
+  if (!el) return;
+  const icons = { idle:'', saving:'⟳ מסנכרן...', saved:'✓ מסונכרן', error:'⚠ שגיאת סנכרון' };
+  const colors = { idle:'transparent', saving:'var(--text3)', saved:'var(--green)', error:'var(--orange)' };
+  el.textContent = icons[status];
+  el.style.color = colors[status];
+}
+
+
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -74,7 +138,7 @@ function loadState() {
   } catch(e) {}
   return defaultState();
 }
-function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); scheduleSave(); }
 
 function defaultState() {
   return {
@@ -788,6 +852,10 @@ document.querySelectorAll('.bottom-nav-item').forEach(btn=>{
 // ─────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────
-loadSession();
-if (currentUser) { showAppShell(); navigate('dashboard'); }
-else showLoginScreen();
+// Load from Google Sheets first, then init
+(async () => {
+  await loadFromSheets();
+  loadSession();
+  if (currentUser) { showAppShell(); navigate('dashboard'); }
+  else showLoginScreen();
+})();
