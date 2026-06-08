@@ -547,13 +547,15 @@ function renderDashboard() {
   for (let d = new Date(trendFrom); d <= trendTo; d.setDate(d.getDate()+1)) {
     daysArr.push(d.toISOString().slice(0,10));
   }
+  // Use all entries in the trend window (not just the selected period)
+  // but filtered by station and user permissions
+  const allFilteredEntries = state.entries
+    .filter(e=>{ if(!isAdmin()) return currentUser.stationIds.includes(e.stationId); return true; })
+    .filter(e=> selectedStationId ? e.stationId===selectedStationId : true);
+
   const trendData = daysArr.map(date=>({
     date,
-    total: state.entries
-      .filter(e=>{ if(!isAdmin()) return currentUser.stationIds.includes(e.stationId); return true; })
-      .filter(e=>e.date===date)
-      .filter(e=> selectedStationId ? e.stationId===selectedStationId : true)
-      .reduce((s,e)=>s+totalForEntry(e),0)
+    total: allFilteredEntries.filter(e=>e.date===date).reduce((s,e)=>s+totalForEntry(e),0)
   }));
   const maxTicks = trendDays <= 7 ? trendDays : trendDays <= 30 ? 10 : 12;
   destroyChart(chartTrend);
