@@ -1308,17 +1308,35 @@ tr:hover td { background: var(--bg3); }
 #page-dashboard .page-header {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 80;
   background: var(--bg);
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
   margin-bottom: 1.25rem;
+  /* add subtle shadow so content slides under */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
-/* On mobile, top = topbar height */
-@media (max-width: 768px) {
+/* Desktop: sidebar is fixed so main-content scrolls naturally */
+@media (min-width: 769px) {
+  .main-content {
+    overflow-y: auto;
+    height: 100vh;
+  }
   #page-dashboard .page-header {
-    top: var(--topbar-h);
+    top: 0;
+  }
+}
+
+/* Mobile: top = topbar height */
+@media (max-width: 768px) {
+  .main-content {
+    overflow-y: auto;
+    height: calc(100vh - var(--topbar-h) - 60px);
+    position: relative;
+  }
+  #page-dashboard .page-header {
+    top: 0;
     padding-top: 0.6rem;
     padding-bottom: 0.6rem;
   }
