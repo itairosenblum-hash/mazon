@@ -273,19 +273,6 @@ function togglePasswordVisibility() {
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="app.js"></script>
-<script>
-// Mirror sync status to desktop indicator too
-const _origSetSync = window.setSyncStatus;
-function setSyncStatus(status) {
-  if (typeof _origSetSync === "function") _origSetSync(status);
-  const icons = { idle:"", saving:"⟳ מסנכרן...", saved:"✓ מסונכרן", error:"⚠ שגיאה" };
-  const colors = { idle:"transparent", saving:"var(--text3)", saved:"var(--green)", error:"var(--orange)" };
-  ["syncIndicator","syncIndicatorDesktop"].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = icons[status]; el.style.color = colors[status];
-  });
-}
-</script>
+
 </body>
 </html>
