@@ -61,29 +61,62 @@ const STORAGE_KEY = 'catering_tracker_v1';
 const SESSION_KEY = 'catering_session';
 
 // ─────────────────────────────────────────────
-// GOOGLE SHEETS SYNC
+// GOOGLE SHEETS SYNC (JSONP — no CORS issues)
 // ─────────────────────────────────────────────
 const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwD7HaEhGRwSMy_KvS-k5RHzbwisd4d2ehDJAw7_ep9sNsiSK3hArtVdk-yCXmqaoC-bQ/exec';
 let syncTimeout = null;
-let syncStatus = 'idle'; // idle | saving | saved | error
 
 function scheduleSave() {
   clearTimeout(syncTimeout);
   syncTimeout = setTimeout(syncToSheets, 1500);
 }
 
+function setSyncStatus(status) {
+  const icons = { idle:'', saving:'⟳ מסנכרן...', saved:'✓ מסונכרן', error:'⚠ שגיאה' };
+  const colors = { idle:'transparent', saving:'var(--text3)', saved:'var(--green)', error:'var(--orange)' };
+  ['syncIndicator','syncIndicatorDesktop'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = icons[status] || '';
+    el.style.color = colors[status] || 'transparent';
+  });
+}
+
+// JSONP helper — bypasses CORS
+function jsonpGet(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = '_jsonp_' + Date.now();
+    const script = document.createElement('script');
+    const timer = setTimeout(() => {
+      delete window[cbName];
+      document.body.removeChild(script);
+      reject(new Error('timeout'));
+    }, 8000);
+    window[cbName] = (data) => {
+      clearTimeout(timer);
+      delete window[cbName];
+      document.body.removeChild(script);
+      resolve(data);
+    };
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName + '&t=' + Date.now();
+    script.onerror = () => { clearTimeout(timer); reject(new Error('script error')); };
+    document.body.appendChild(script);
+  });
+}
+
 async function syncToSheets() {
   setSyncStatus('saving');
   try {
-    const resp = await fetch(SHEETS_URL, {
+    // Use no-cors POST via form submission trick via fetch with mode no-cors
+    await fetch(SHEETS_URL, {
       method: 'POST',
-      body: JSON.stringify(state),
-      headers: { 'Content-Type': 'text/plain' }
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(state)
     });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
     setSyncStatus('saved');
   } catch(e) {
-    console.warn('Sync error:', e);
+    console.warn('Sync save error:', e);
     setSyncStatus('error');
   }
 }
@@ -91,16 +124,12 @@ async function syncToSheets() {
 async function loadFromSheets() {
   setSyncStatus('saving');
   try {
-    const resp = await fetch(SHEETS_URL + '?t=' + Date.now());
-    const text = await resp.text();
-    if (!text || text === 'Host not in allowlist') throw new Error('no data');
-    const parsed = JSON.parse(text);
-    if (parsed && parsed.roles && parsed.stations) {
-      // Merge: keep remote state but ensure users array exists
-      if (!parsed.users || parsed.users.length === 0) {
-        parsed.users = state.users.length ? state.users : defaultState().users;
+    const data = await jsonpGet(SHEETS_URL);
+    if (data && data.roles && data.stations) {
+      if (!data.users || data.users.length === 0) {
+        data.users = state.users && state.users.length ? state.users : defaultState().users;
       }
-      state = parsed;
+      state = data;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       setSyncStatus('saved');
       return true;
@@ -111,51 +140,6 @@ async function loadFromSheets() {
   setSyncStatus('idle');
   return false;
 }
-
-function setSyncStatus(status) {
-  syncStatus = status;
-  const el = document.getElementById('syncIndicator');
-  if (!el) return;
-  const icons = { idle:'', saving:'⟳ מסנכרן...', saved:'✓ מסונכרן', error:'⚠ שגיאת סנכרון' };
-  const colors = { idle:'transparent', saving:'var(--text3)', saved:'var(--green)', error:'var(--orange)' };
-  el.textContent = icons[status];
-  el.style.color = colors[status];
-}
-
-
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      // Migrate old state that has no users array
-      if (!parsed.users || parsed.users.length === 0) {
-        parsed.users = defaultState().users;
-      }
-      return parsed;
-    }
-  } catch(e) {}
-  return defaultState();
-}
-function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); scheduleSave(); }
-
-function defaultState() {
-  return {
-    roles: ['שף', 'טבח', 'קונדיטור', 'חדר אוכל', 'שוטף כלים', 'מנהל תחנה'],
-    stations: [
-      { id: 's1', name: 'מטבח תל אביב מרכז', minStaff: { 'שף':1,'טבח':2,'קונדיטור':1,'חדר אוכל':3,'שוטף כלים':1,'מנהל תחנה':1 } },
-      { id: 's2', name: 'מטבח רמת גן',       minStaff: { 'שף':1,'טבח':2,'קונדיטור':1,'חדר אוכל':2,'שוטף כלים':1,'מנהל תחנה':1 } },
-      { id: 's3', name: 'מטבח ירושלים',      minStaff: { 'שף':1,'טבח':1,'קונדיטור':0,'חדר אוכל':2,'שוטף כלים':1,'מנהל תחנה':1 } },
-    ],
-    users: [
-      { id: 'u0', username: 'admin', password: 'admin123', role: 'admin', name: 'מנהל ראשי', stationIds: [] },
-    ],
-    entries: []
-  };
-}
-
-let state = loadState();
 
 // ─────────────────────────────────────────────
 // AUTH
