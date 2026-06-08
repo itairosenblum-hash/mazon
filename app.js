@@ -553,12 +553,24 @@ document.getElementById('historyMonth').addEventListener('change', renderHistory
 function renderStations() {
   const container=document.getElementById('stationsList');
   if(!state.stations.length){container.innerHTML='<div class="empty-state"><span class="emoji">🏪</span>אין תחנות.</div>';return;}
-  container.innerHTML=`<div class="stations-grid">${state.stations.map(s=>{
+
+  // Grand total across all stations
+  const grandTotal = state.stations.reduce((sum, s) =>
+    sum + state.roles.reduce((rs, r) => rs + ((s.minStaff||{})[r]||0), 0), 0);
+
+  container.innerHTML=`
+    <div class="stations-total-banner">
+      <span class="stations-total-label">סה״כ כוח אדם נדרש בכל התחנות</span>
+      <span class="stations-total-value">${grandTotal} עובדים</span>
+    </div>
+    <div class="stations-grid">${state.stations.map(s=>{
     const pills=state.roles.filter(r=>((s.minStaff||{})[r]||0)>0)
       .map(r=>`<span>${roleEmoji(r)} ${r}: ${s.minStaff[r]}</span>`).join('');
+    const stationTotal = state.roles.reduce((sum,r)=>sum+((s.minStaff||{})[r]||0),0);
     return `<div class="station-card">
       <div class="station-card-name">🏪 ${s.name}</div>
       <div class="station-roles-mini">${pills||'<span style="color:var(--text3)">לא הוגדרו מינימומים</span>'}</div>
+      <div class="station-total">סה״כ נדרש: <strong>${stationTotal}</strong></div>
       <div class="station-card-actions">
         <button class="btn-icon" onclick="openStationModal('${s.id}')">✏ עריכה</button>
         <button class="btn-icon danger" onclick="deleteStation('${s.id}')">✕ מחק</button>
