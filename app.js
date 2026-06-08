@@ -566,10 +566,11 @@ function renderDashboard() {
     return { role, emoji:roleEmoji(role), avgActual, required, color: C.palette[i%C.palette.length] };
   }).filter(r => r.avgActual > 0 || r.required > 0);
 
-  // Set dynamic height based on screen width
+  // Set dynamic height — generous spacing so all roles fit
   const isMobile = window.innerWidth <= 768;
-  const rowH = isMobile ? 62 : 52;
-  const roleChartH = Math.max(240, roleTotals.length * rowH + 80);
+  const rowH = isMobile ? 75 : 52;
+  const padding = isMobile ? 100 : 80;
+  const roleChartH = Math.max(300, roleTotals.length * rowH + padding);
   const roleWrap = document.querySelector('.chart-roles-wrap');
   if (roleWrap) roleWrap.style.height = roleChartH + 'px';
 
@@ -680,6 +681,10 @@ function renderDashboard() {
       const cls=pct>=90?'badge-ok':pct>=70?'badge-warn':'badge-danger';
       return `<tr><td><strong>${station.name}</strong></td>${state.roles.map(r=>`<td>${roleSums[r]||0}</td>`).join('')}<td><strong>${sTotal}</strong></td><td><span class="badge ${cls}">${pct}%</span></td></tr>`;
     }).join('')}</tbody></table>`;
+
+
+  // Render notes panel
+  renderDashboardNotes(entries, period);
 }
 
 
@@ -882,9 +887,6 @@ function renderDashboardNotes(entries, period) {
       <div class="dashboard-note-text">💬 ${e.note}</div>
     </div>`;
   }).join('');
-
-  // Render notes panel
-  renderDashboardNotes(entries, period);
 
 }
 
