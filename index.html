@@ -114,16 +114,18 @@
       <div class="page-header">
         <h1><span class="h-icon">📊</span> Dashboard</h1>
         <div class="dashboard-nav-wrap">
-          <select id="dashboardPeriod" class="period-select">
-            <option value="1" selected>יומי</option>
-            <option value="7">שבועי</option>
-            <option value="30">חודשי</option>
-            <option value="90">רבעוני</option>
-            <option value="365">שנתי</option>
-          </select>
-          <select id="dashboardStation" class="period-select">
-            <option value="">כל התחנות</option>
-          </select>
+          <div class="dashboard-filters">
+            <select id="dashboardPeriod" class="period-select">
+              <option value="1" selected>יומי</option>
+              <option value="7">שבועי</option>
+              <option value="30">חודשי</option>
+              <option value="90">רבעוני</option>
+              <option value="365">שנתי</option>
+            </select>
+            <select id="dashboardStation" class="period-select">
+              <option value="">כל התחנות</option>
+            </select>
+          </div>
           <div class="period-nav">
             <button class="period-nav-btn" id="periodPrev" title="תקופה קודמת">&#8592;</button>
             <span id="dashboardDateRange" class="date-range-label"></span>
