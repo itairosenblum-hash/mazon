@@ -583,15 +583,15 @@ function renderDashboard() {
         {
           label:'בפועל (ממוצע יומי)',
           data: roleTotals.map(r=>r.avgActual),
-          backgroundColor: roleTotals.map(r=>r.color+'cc'),
-          borderColor: roleTotals.map(r=>r.color),
+          backgroundColor: 'rgba(90,160,224,0.75)',
+          borderColor: '#5aa0e0',
           borderWidth:2, borderRadius:4
         },
         {
           label:'תקן נדרש',
           data: roleTotals.map(r=>r.required),
-          backgroundColor: 'rgba(160,160,160,0.13)',
-          borderColor: 'rgba(160,160,160,0.5)',
+          backgroundColor: 'rgba(232,197,71,0.25)',
+          borderColor: '#e8c547',
           borderWidth:2, borderRadius:4
         }
       ]
