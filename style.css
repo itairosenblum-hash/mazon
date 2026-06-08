@@ -1110,3 +1110,15 @@ tr:hover td { background: var(--bg3); }
   margin-top: 0.75rem;
 }
 #chartByStation { cursor: pointer; }
+
+/* ══ DATE RANGE LABEL ══ */
+.date-range-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--text2);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  white-space: nowrap;
+}
