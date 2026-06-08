@@ -809,6 +809,48 @@ document.getElementById('drilldownModal').addEventListener('click', e=>{
   }
 });
 
+  // Render notes panel
+  renderDashboardNotes(entries, period);
+
+// ─────────────────────────────────────────────
+// DASHBOARD NOTES PANEL
+// ─────────────────────────────────────────────
+function renderDashboardNotes(entries, period) {
+  const container = document.getElementById('dashboardNotes');
+  const label = document.getElementById('notesPeriodLabel');
+  if (!container) return;
+
+  // Get entries with notes, sorted newest first
+  const withNotes = entries
+    .filter(e => e.note && e.note.trim())
+    .sort((a,b) => b.date.localeCompare(a.date));
+
+  // Update label
+  if (label) {
+    const periodLabels = {1:'— היום',7:'— שבוע אחרון',30:'— חודש אחרון',90:'— רבעון אחרון',365:'— שנה אחרונה'};
+    label.textContent = periodLabels[period] || '';
+  }
+
+  // Hide card if no notes
+  const card = document.getElementById('notesCard');
+  if (card) card.style.display = withNotes.length ? 'block' : 'none';
+  if (!withNotes.length) return;
+
+  container.innerHTML = withNotes.map(e => {
+    const station = getStation(e.stationId);
+    const entryUser = state.users.find(u => u.id === e.byUser);
+    return `<div class="dashboard-note-item">
+      <div class="dashboard-note-header">
+        <span class="dashboard-note-station">🏪 ${station ? station.name : '?'}</span>
+        <span class="dashboard-note-date">${formatDate(e.date)}</span>
+        ${entryUser ? `<span class="dashboard-note-user">👤 ${entryUser.name}</span>` : ''}
+      </div>
+      <div class="dashboard-note-text">💬 ${e.note}</div>
+    </div>`;
+  }).join('');
+}
+
+
 function destroyChart(chart) { if(chart){try{chart.destroy();}catch(e){}} }
 document.getElementById('dashboardPeriod').addEventListener('change', () => {
   periodOffset = 0;
