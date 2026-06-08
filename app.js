@@ -63,7 +63,7 @@ const SESSION_KEY = 'catering_session';
 // ─────────────────────────────────────────────
 // GOOGLE SHEETS SYNC
 // ─────────────────────────────────────────────
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbz2k08tbmbuAwhCIoNrnMl-uXsxIzk02Rt_R0Jxj9F2atlS8pjQmb_9FXgpAgI-mA5J9w/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyMWaKsav_C4skEoxcDMVNgw1UQVohfDLciuxfl9rBLI8_o9EqLF3Dgazk9_dLwPLmOUQ/exec';
 let syncTimeout = null;
 let syncStatus = 'idle'; // idle | saving | saved | error
 
