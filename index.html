@@ -57,33 +57,14 @@
 
   <!-- Mobile topbar -->
   <div class="topbar" id="topbar">
-    <div class="topbar-row1">
-      <div class="topbar-logo">
-        <span>🍽</span>
-        <div>מעקב קבלן <strong>ים</strong></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <span id="syncIndicator" class="sync-indicator"></span>
-        <button class="topbar-theme" onclick="toggleTheme()" title="החלף נושא">🌙</button>
-        <button class="hamburger" id="hamburgerBtn" onclick="toggleDrawer()">☰</button>
-      </div>
+    <div class="topbar-logo">
+      <span>🍽</span>
+      <div>מעקב קבלן <strong>ים</strong></div>
     </div>
-    <div class="topbar-row2" id="topbarDashControls" style="display:none">
-      <select id="dashboardPeriodMobile" class="period-select-sm">
-        <option value="1" selected>יומי</option>
-        <option value="7">שבועי</option>
-        <option value="30">חודשי</option>
-        <option value="90">רבעוני</option>
-        <option value="365">שנתי</option>
-      </select>
-      <select id="dashboardStationMobile" class="period-select-sm">
-        <option value="">כל התחנות</option>
-      </select>
-      <div class="period-nav-sm">
-        <button class="period-nav-btn" id="periodPrevMobile">&#8592;</button>
-        <span id="dashboardDateRangeMobile" class="date-range-sm"></span>
-        <button class="period-nav-btn" id="periodNextMobile">&#8594;</button>
-      </div>
+    <span id="syncIndicator" class="sync-indicator"></span>
+    <div class="topbar-actions">
+      <button class="topbar-theme" onclick="toggleTheme()" title="החלף נושא">🌙</button>
+      <button class="hamburger" id="hamburgerBtn" onclick="toggleDrawer()">☰</button>
     </div>
   </div>
 
