@@ -1305,6 +1305,7 @@ tr:hover td { background: var(--bg3); }
 }
 
 /* ══ STICKY DASHBOARD HEADER ══ */
+/* Works by making the header fixed at top, pushing content down with padding */
 #page-dashboard .page-header {
   position: sticky;
   top: 0;
@@ -1313,31 +1314,22 @@ tr:hover td { background: var(--bg3); }
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
   margin-bottom: 1.25rem;
-  /* add subtle shadow so content slides under */
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
 }
 
-/* Desktop: sidebar is fixed so main-content scrolls naturally */
-@media (min-width: 769px) {
-  .main-content {
-    overflow-y: auto;
-    height: 100vh;
-  }
-  #page-dashboard .page-header {
-    top: 0;
-  }
-}
-
-/* Mobile: top = topbar height */
+/* Mobile: header sticks just below the topbar */
 @media (max-width: 768px) {
-  .main-content {
-    overflow-y: auto;
-    height: calc(100vh - var(--topbar-h) - 60px);
-    position: relative;
-  }
   #page-dashboard .page-header {
-    top: 0;
-    padding-top: 0.6rem;
-    padding-bottom: 0.6rem;
+    position: fixed;
+    top: var(--topbar-h);
+    right: 0;
+    left: 0;
+    padding: 0.6rem 1rem;
+    margin-bottom: 0;
+    z-index: 80;
+  }
+  /* Push page content down so it doesn't hide behind fixed header */
+  #page-dashboard {
+    padding-top: 110px;
   }
 }
