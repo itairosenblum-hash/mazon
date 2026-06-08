@@ -519,21 +519,69 @@ function renderDashboard() {
     }
   });
 
-  const roleTotals = state.roles.map(role=>({
-    role, emoji:roleEmoji(role),
-    total:entries.reduce((s,e)=>s+(e.counts[role]||0),0)
-  })).filter(r=>r.total>0);
+  // Role chart: actual (avg per day) vs required (sum of minStaff across visible stations)
+  const daysCount = entries.length
+    ? new Set(entries.map(e=>e.date)).size || 1
+    : 1;
+
+  const roleTotals = state.roles.map((role,i) => {
+    const actualTotal = entries.reduce((s,e)=>s+(e.counts[role]||0), 0);
+    const avgActual = Math.round(actualTotal / daysCount);
+    const required = visibleStations.reduce((s,st)=>s+((st.minStaff||{})[role]||0), 0);
+    return { role, emoji:roleEmoji(role), avgActual, required, color: C.palette[i%C.palette.length] };
+  }).filter(r => r.avgActual > 0 || r.required > 0);
+
   destroyChart(chartRole);
   chartRole = new Chart(document.getElementById('chartByRole'),{
-    type:'doughnut',
-    data:{ labels:roleTotals.map(r=>r.emoji+' '+r.role), datasets:[{
-      data:roleTotals.map(r=>r.total),
-      backgroundColor:roleTotals.map((_,i)=>C.palette[i%C.palette.length]+'bb'),
-      borderColor: document.documentElement.getAttribute('data-theme')==='light'?'#ffffff':'#161616',
-      borderWidth:2, hoverOffset:6
-    }]},
-    options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:true,position:'bottom',labels:{color:C.tick,font:{family:'Heebo',size:11},padding:8,boxWidth:12}}}
+    type:'bar',
+    data:{
+      labels: roleTotals.map(r=>r.emoji+' '+r.role),
+      datasets:[
+        {
+          label:'בפועל (ממוצע יומי)',
+          data: roleTotals.map(r=>r.avgActual),
+          backgroundColor: roleTotals.map(r=>r.color+'cc'),
+          borderColor: roleTotals.map(r=>r.color),
+          borderWidth:2, borderRadius:4
+        },
+        {
+          label:'תקן נדרש',
+          data: roleTotals.map(r=>r.required),
+          backgroundColor: 'rgba(160,160,160,0.13)',
+          borderColor: 'rgba(160,160,160,0.5)',
+          borderWidth:2, borderRadius:4
+        }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      indexAxis:'y',
+      plugins:{
+        legend:{
+          display:true, position:'top',
+          labels:{color:C.tick, font:{family:'Heebo',size:11}, padding:10, boxWidth:12}
+        },
+        tooltip:{
+          callbacks:{
+            afterLabel:(item)=>{
+              if(item.datasetIndex===0){
+                const r=roleTotals[item.dataIndex];
+                if(r.required>0){
+                  const pct=Math.round((r.avgActual/r.required)*100);
+                  const icon=pct>=100?'✅':pct>=70?'⚠️':'❌';
+                  return `${icon} עמידה: ${pct}%`;
+                }
+              }
+              return '';
+            }
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{color:C.tick},grid:{color:C.grid},
+          title:{display:true,text:'עובדים',color:C.tick,font:{family:'Heebo',size:11}}},
+        y:{ticks:{color:C.tick,font:{family:'Heebo',size:11}},grid:{color:C.grid}}
+      }
     }
   });
 
