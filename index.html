@@ -67,23 +67,6 @@
       <button class="hamburger" id="hamburgerBtn" onclick="toggleDrawer()">☰</button>
     </div>
   </div>
-  <!-- Mobile dashboard controls bar — pinned below topbar -->
-  <div id="mobileDashBar" style="display:none;position:fixed;top:var(--topbar-h);right:0;left:0;z-index:299;background:var(--bg2);border-bottom:1px solid var(--border);padding:6px 0.9rem;gap:6px;align-items:center;flex-wrap:nowrap">
-    <select id="dashboardPeriodMobile" onchange="syncMobilePeriod(this)" style="flex:1;min-width:0;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 4px;font-size:0.75rem;font-family:Heebo,sans-serif">
-      <option value="1" selected>יומי</option>
-      <option value="7">שבועי</option>
-      <option value="30">חודשי</option>
-      <option value="90">רבעוני</option>
-      <option value="365">שנתי</option>
-    </select>
-    <select id="dashboardStationMobile" onchange="syncMobileStation(this)" style="flex:1;min-width:0;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 4px;font-size:0.75rem;font-family:Heebo,sans-serif">
-      <option value="">כל התחנות</option>
-    </select>
-    <div style="display:flex;align-items:center;flex:1.2;background:var(--bg3);border:1px solid var(--border);border-radius:6px;overflow:hidden;height:30px">
-      <button onclick="mobileNavPrev()" style="width:30px;height:30px;background:none;border:none;color:var(--text);font-size:1rem;cursor:pointer">←</button>
-      <span id="dashboardDateRangeMobile" style="flex:1;text-align:center;font-size:0.6rem;font-family:Space Mono,monospace;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-      <button onclick="mobileNavNext()" style="width:30px;height:30px;background:none;border:none;color:var(--text);font-size:1rem;cursor:pointer">→</button>
-    </div>
   </div>
 
   <!-- Drawer overlay -->
