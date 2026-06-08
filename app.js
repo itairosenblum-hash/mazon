@@ -737,9 +737,9 @@ function renderRoleInputs() {
   }
   const date = document.getElementById('entryDate').value;
   const existing = state.entries.find(e=>e.stationId===stationId && e.date===date); // undefined if not found
+  const existingNote = existing ? (existing.note || '') : '';
   container.innerHTML = state.roles.map(role=>{
     const min = station?((station.minStaff||{})[role]||0):0;
-    // Default: if existing entry use its value, otherwise pre-fill with minStaff (contract requirement)
     const val = existing !== undefined ? (existing.counts[role]||0) : min;
     return `<div class="role-input-card">
       <div class="role-input-info">
@@ -748,7 +748,11 @@ function renderRoleInputs() {
       </div>
       <input class="role-count-input" type="number" min="0" max="99" value="${val}" placeholder="0" data-role="${role}" />
     </div>`;
-  }).join('');
+  }).join('') + `
+  <div class="entry-note-wrap">
+    <label class="entry-note-label">💬 הערה לתחנה (אופציונלי)</label>
+    <textarea id="entryNote" class="entry-note-input" placeholder="הוסף הערה חופשית לגבי המשמרת...">${existingNote}</textarea>
+  </div>`;
 }
 
 document.getElementById('entryStation').addEventListener('change', renderRoleInputs);
@@ -765,8 +769,9 @@ document.getElementById('btnSaveEntry').addEventListener('click', ()=>{
   document.querySelectorAll('.role-count-input').forEach(input=>{
     counts[input.dataset.role]=parseInt(input.value)||0;
   });
+  const note = document.getElementById('entryNote') ? document.getElementById('entryNote').value.trim() : '';
   state.entries = state.entries.filter(e=>!(e.stationId===stationId && e.date===date));
-  state.entries.push({ id:'e'+Date.now(), date, stationId, counts, byUser: currentUser.id });
+  state.entries.push({ id:'e'+Date.now(), date, stationId, counts, note, byUser: currentUser.id });
   saveState();
   showMsg('saveMsg','✓ הנוכחות נשמרה בהצלחה');
   renderRecentEntries();
@@ -788,9 +793,10 @@ function renderRecentEntries() {
     const pills=state.roles.filter(r=>e.counts[r]>0)
       .map(r=>`<span class="role-pill">${roleEmoji(r)} ${r}: ${e.counts[r]}</span>`).join('');
     return `<div class="recent-entry">
-      <div>
+      <div style="flex:1">
         <div class="recent-entry-station">${s?s.name:'?'}</div>
         <div class="recent-entry-info">${formatDate(e.date)} • סה"כ: ${totalForEntry(e)}${entryUser?' • '+entryUser.name:''}</div>
+        ${e.note?`<div class="recent-entry-note">💬 ${e.note}</div>`:''}
       </div>
       <div class="recent-roles-pills">${pills}</div>
     </div>`;
@@ -822,7 +828,7 @@ function renderHistoryTable() {
   const container=document.getElementById('historyTable');
   if(!filtered.length){container.innerHTML='<div class="empty-state"><span class="emoji">🔍</span>אין נתונים לתקופה זו</div>';return;}
   container.innerHTML=`<div class="chart-card full" style="margin-top:0"><table>
-    <thead><tr><th>תאריך</th><th>תחנה</th>${state.roles.map(r=>`<th>${roleEmoji(r)} ${r}</th>`).join('')}<th>סה"כ</th></tr></thead>
+    <thead><tr><th>תאריך</th><th>תחנה</th>${state.roles.map(r=>`<th>${roleEmoji(r)} ${r}</th>`).join('')}<th>סה"כ</th><th>הערה</th></tr></thead>
     <tbody>${filtered.map(e=>{
       const s=getStation(e.stationId);
       return `<tr><td>${formatDate(e.date)}</td><td><strong>${s?s.name:'?'}</strong></td>${state.roles.map(r=>{
@@ -830,7 +836,7 @@ function renderHistoryTable() {
         const min=s?((s.minStaff||{})[r]||0):0;
         const ok=min===0||val>=min;
         return `<td style="color:${val===0?'var(--text3)':ok?'var(--text)':'var(--red)'}">${val}</td>`;
-      }).join('')}<td><strong>${totalForEntry(e)}</strong></td></tr>`;
+      }).join('')}<td><strong>${totalForEntry(e)}</strong></td><td class="history-note-cell">${e.note?`<span class="history-note">💬 ${e.note}</span>`:''}</td></tr>`;
     }).join('')}</tbody></table></div>`;
 }
 
