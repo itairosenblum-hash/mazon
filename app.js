@@ -846,9 +846,6 @@ document.getElementById('drilldownModal').addEventListener('click', e=>{
   }
 });
 
-  // Render notes panel
-  renderDashboardNotes(entries, period);
-
 // ─────────────────────────────────────────────
 // DASHBOARD NOTES PANEL
 // ─────────────────────────────────────────────
@@ -885,6 +882,10 @@ function renderDashboardNotes(entries, period) {
       <div class="dashboard-note-text">💬 ${e.note}</div>
     </div>`;
   }).join('');
+
+  // Render notes panel
+  renderDashboardNotes(entries, period);
+
 }
 
 
