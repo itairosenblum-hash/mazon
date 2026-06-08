@@ -813,3 +813,180 @@ tr:hover td { background: var(--bg3); }
   .summary-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .summary-value { font-size: 1.3rem; }
 }
+
+/* ══════════════════════════════
+   LOGIN SCREEN
+══════════════════════════════ */
+#loginScreen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 1rem;
+}
+.login-wrap {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+.login-food-strip {
+  font-size: 1.3rem;
+  letter-spacing: 6px;
+  opacity: 0.4;
+  text-align: center;
+}
+.login-logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.login-logo-icon { font-size: 3rem; }
+.login-logo-title { font-size: 1.4rem; font-weight: 700; color: var(--text); }
+.login-logo-sub { font-size: 1rem; color: var(--accent); font-weight: 700; }
+.login-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  width: 100%;
+}
+.login-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 1.25rem;
+  text-align: center;
+}
+.login-error {
+  color: var(--red);
+  font-size: 0.82rem;
+  min-height: 20px;
+  margin-top: 8px;
+  text-align: center;
+}
+.login-hint {
+  font-size: 0.75rem;
+  color: var(--text3);
+  font-family: 'Space Mono', monospace;
+  text-align: center;
+}
+
+/* ══════════════════════════════
+   USER BADGE IN SIDEBAR
+══════════════════════════════ */
+.user-badge-sidebar {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-size: 0.8rem;
+  color: var(--text2);
+  margin-bottom: 1rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ══════════════════════════════
+   LOGOUT BUTTON
+══════════════════════════════ */
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text3);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.82rem;
+  cursor: pointer;
+  width: 100%;
+  text-align: right;
+  margin-bottom: 0.75rem;
+  transition: all 0.15s;
+}
+.btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+/* ══════════════════════════════
+   USERS PAGE
+══════════════════════════════ */
+.user-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.user-card-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+}
+.user-avatar {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #000;
+  font-size: 1.1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.user-name { font-weight: 700; font-size: 0.95rem; }
+.user-username { font-size: 0.75rem; color: var(--text2); font-family: 'Space Mono', monospace; margin: 2px 0; }
+.user-stations { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.user-card-actions { display: flex; gap: 7px; }
+
+.station-tag {
+  display: inline-block;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  color: var(--text2);
+}
+
+/* Station checkboxes in modal */
+.stations-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.station-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  transition: border-color 0.15s;
+}
+.station-checkbox:hover { border-color: var(--accent); }
+.station-checkbox input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
+
+/* Mobile admin nav items */
+@media (max-width: 768px) {
+  .admin-nav-item { display: none; }
+  [data-admin-only] .admin-nav-item { display: flex; }
+}
