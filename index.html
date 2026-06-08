@@ -51,6 +51,7 @@
       <span>🍽</span>
       <div>מעקב קבלן <strong>ים</strong></div>
     </div>
+    <span id="syncIndicator" class="sync-indicator"></span>
     <div class="topbar-actions">
       <button class="topbar-theme" onclick="toggleTheme()" title="החלף נושא">🌙</button>
       <button class="hamburger" id="hamburgerBtn" onclick="toggleDrawer()">☰</button>
@@ -82,7 +83,8 @@
       <div class="toggle-btn" onclick="toggleTheme()"></div>
       <span class="toggle-emoji">☀️</span>
     </div>
-    <div class="sidebar-date" id="sidebarDate"></div>
+    <div id="syncIndicatorDesktop" class="sync-indicator-desktop"></div>
+      <div class="sidebar-date" id="sidebarDate"></div>
   </nav>
 
   <!-- Mobile bottom nav -->
@@ -271,5 +273,19 @@ function togglePasswordVisibility() {
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="app.js"></script>
+<script>
+// Mirror sync status to desktop indicator too
+const _origSetSync = window.setSyncStatus;
+function setSyncStatus(status) {
+  if (typeof _origSetSync === "function") _origSetSync(status);
+  const icons = { idle:"", saving:"⟳ מסנכרן...", saved:"✓ מסונכרן", error:"⚠ שגיאה" };
+  const colors = { idle:"transparent", saving:"var(--text3)", saved:"var(--green)", error:"var(--orange)" };
+  ["syncIndicator","syncIndicatorDesktop"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = icons[status]; el.style.color = colors[status];
+  });
+}
+</script>
 </body>
 </html>
