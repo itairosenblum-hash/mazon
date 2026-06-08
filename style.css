@@ -1264,3 +1264,42 @@ tr:hover td { background: var(--bg3); }
   /* height set dynamically by JS based on number of roles */
   min-height: 200px;
 }
+
+/* ══ DASHBOARD NOTES ══ */
+.dashboard-note-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.dashboard-note-item:last-child { border-bottom: none; }
+
+.dashboard-note-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.dashboard-note-station {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--accent);
+}
+.dashboard-note-date {
+  font-family: "Space Mono", monospace;
+  font-size: 0.72rem;
+  color: var(--text3);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 8px;
+}
+.dashboard-note-user {
+  font-size: 0.75rem;
+  color: var(--text2);
+}
+.dashboard-note-text {
+  font-size: 0.88rem;
+  color: var(--text);
+  line-height: 1.5;
+  padding-right: 4px;
+}
