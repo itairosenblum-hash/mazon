@@ -442,8 +442,11 @@ function renderDashboard() {
   const stationSel = document.getElementById('dashboardStation');
   if (stationSel) {
     const currentVal = stationSel.value;
-    stationSel.innerHTML = '<option value="">כל התחנות</option>' +
+    const opts = '<option value="">כל התחנות</option>' +
       allowedStations().map(s => `<option value="${s.id}"${s.id===currentVal?' selected':''}>${s.name}</option>`).join('');
+    stationSel.innerHTML = opts;
+    const mSt = document.getElementById('dashboardStationMobile');
+    if (mSt) { mSt.innerHTML = opts; mSt.value = currentVal; }
   }
   const selectedStationId = stationSel ? stationSel.value : '';
   // Filter by selected station
@@ -456,14 +459,13 @@ function renderDashboard() {
   // Show date range using getPeriodRange
   const { from: fromDate, to: toDate } = getPeriodRange(period);
   const fmtShort = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-  const rangeEl = document.getElementById('dashboardDateRange');
-  if (rangeEl) {
-    rangeEl.textContent = period === 1
-      ? fmtShort(toDate)
-      : `${fmtShort(fromDate)} — ${fmtShort(toDate)}`;
-  }
-  const nextBtn = document.getElementById('periodNext');
-  if (nextBtn) nextBtn.disabled = periodOffset >= 0;
+  const rangeText = period === 1 ? fmtShort(toDate) : `${fmtShort(fromDate)} — ${fmtShort(toDate)}`;
+  ['dashboardDateRange','dashboardDateRangeMobile'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent=rangeText;
+  });
+  ['periodNext'].forEach(id=>{
+    const btn=document.getElementById(id); if(btn) btn.disabled=periodOffset>=0;
+  });
   const C = getChartColors();
   const visibleStations = selectedStationId
     ? allowedStations().filter(s => s.id === selectedStationId)
@@ -1305,6 +1307,22 @@ document.querySelectorAll('.bottom-nav-item').forEach(btn=>{
     closeDrawer();
   });
 });
+
+
+// ─────────────────────────────────────────────
+// MOBILE DASHBOARD BAR HELPERS
+// ─────────────────────────────────────────────
+function syncMobilePeriod(sel) {
+  document.getElementById('dashboardPeriod').value = sel.value;
+  periodOffset = 0;
+  renderDashboard();
+}
+function syncMobileStation(sel) {
+  document.getElementById('dashboardStation').value = sel.value;
+  renderDashboard();
+}
+function mobileNavPrev() { periodOffset--; renderDashboard(); }
+function mobileNavNext() { if (periodOffset < 0) { periodOffset++; renderDashboard(); } }
 
 // ─────────────────────────────────────────────
 // INIT
