@@ -822,11 +822,24 @@ tr:hover td { background: var(--bg3); }
   .sidebar.open { transform: translateX(0); }
   .sidebar::before { display: none; }
 
-  /* Main shifts down for topbar and up for bottom nav */
+  /* Main: fixed scroll container between topbar and bottom nav */
   .main-content {
-    margin-right: 0;
-    padding: calc(var(--topbar-h) + 1rem) 1rem calc(60px + 1rem);
+    position: fixed;
+    top: var(--topbar-h);
+    right: 0;
+    left: 0;
+    bottom: 60px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.75rem 1rem 1rem;
     max-width: 100vw;
+    transition: top 0.2s;
+  }
+  .main-content.dashboard-active {
+    top: calc(var(--topbar-h) + 46px);
+  }
+  #page-dashboard .page-header {
+    display: none;
   }
 
   .page-header h1 { font-size: 1.2rem; }
