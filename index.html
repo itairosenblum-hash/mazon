@@ -104,13 +104,16 @@
     <div class="page active" id="page-dashboard">
       <div class="page-header">
         <h1><span class="h-icon">📊</span> Dashboard</h1>
-        <select id="dashboardPeriod" class="period-select">
-          <option value="1" selected>יומי</option>
-          <option value="7">שבועי</option>
-          <option value="30">חודשי</option>
-          <option value="90">רבעוני</option>
-          <option value="365">שנתי</option>
-        </select>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <select id="dashboardPeriod" class="period-select">
+            <option value="1" selected>יומי</option>
+            <option value="7">שבועי</option>
+            <option value="30">חודשי</option>
+            <option value="90">רבעוני</option>
+            <option value="365">שנתי</option>
+          </select>
+          <span id="dashboardDateRange" class="date-range-label"></span>
+        </div>
       </div>
       <div class="summary-grid" id="summaryCards"></div>
       <div class="charts-row">
