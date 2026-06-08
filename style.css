@@ -1317,7 +1317,7 @@ tr:hover td { background: var(--bg3); }
 }
 
 @media (max-width: 768px) {
-  /* main-content is a fixed scroll container between topbar and bottom nav */
+  /* main-content: fixed scroll container, starts right below topbar */
   .main-content {
     position: fixed;
     top: var(--topbar-h);
@@ -1326,11 +1326,21 @@ tr:hover td { background: var(--bg3); }
     bottom: 60px;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    padding-top: 0 !important;
   }
-  /* sticky inside the scroll container — no extra margin needed */
+  /* Remove extra padding from main-content on mobile */
+  .main-content {
+    padding: 0.75rem 1rem 1rem !important;
+  }
+  /* Dashboard header: sticky at top of scroll container */
   #page-dashboard .page-header {
-    top: 0;
-    padding: 0.6rem 1rem;
-    margin-bottom: 1rem;
+    position: sticky;
+    top: -0.75rem;
+    margin-top: -0.75rem;
+    padding: 0.6rem 0;
+    margin-bottom: 0.75rem;
+    z-index: 80;
+    background: var(--bg);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
   }
 }
