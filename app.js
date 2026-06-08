@@ -333,7 +333,15 @@ function navigate(page) {
   const link = document.querySelector(`[data-page="${page}"]`);
   if (link) link.classList.add('active');
   currentPage = page;
-
+  // Show mobile dash bar only on dashboard
+  const mdb = document.getElementById('mobileDashBar');
+  if (mdb) mdb.style.display = page === 'dashboard' ? 'flex' : 'none';
+  if (window.innerWidth <= 768) {
+    const mc = document.querySelector('.main-content');
+    if (mc) mc.style.paddingTop = page === 'dashboard'
+      ? 'calc(var(--topbar-h) + 46px + 0.75rem)'
+      : 'calc(var(--topbar-h) + 0.75rem)';
+  }
   renderPage(page);
 }
 
