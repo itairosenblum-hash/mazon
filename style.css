@@ -1332,8 +1332,14 @@ tr:hover td { background: var(--bg3); }
     padding: 0.6rem 1rem;
     margin-bottom: 0;
   }
-  /* Push summary cards below the sticky header */
+  /* Push ALL dashboard content below the sticky header dynamically */
+  #page-dashboard {
+    padding-top: 0;
+  }
+  #page-dashboard > *:not(.page-header) {
+    /* will be handled by JS measuring header height */
+  }
   #summaryCards {
-    margin-top: 160px;
+    margin-top: 10px;
   }
 }
