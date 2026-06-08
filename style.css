@@ -1317,7 +1317,7 @@ tr:hover td { background: var(--bg3); }
 }
 
 @media (max-width: 768px) {
-  /* Make main-content a fixed scroll container */
+  /* main-content is a fixed scroll container between topbar and bottom nav */
   .main-content {
     position: fixed;
     top: var(--topbar-h);
@@ -1327,19 +1327,10 @@ tr:hover td { background: var(--bg3); }
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
+  /* sticky inside the scroll container — no extra margin needed */
   #page-dashboard .page-header {
     top: 0;
     padding: 0.6rem 1rem;
-    margin-bottom: 0;
-  }
-  /* Push ALL dashboard content below the sticky header dynamically */
-  #page-dashboard {
-    padding-top: 0;
-  }
-  #page-dashboard > *:not(.page-header) {
-    /* will be handled by JS measuring header height */
-  }
-  #summaryCards {
-    margin-top: 10px;
+    margin-bottom: 1rem;
   }
 }
