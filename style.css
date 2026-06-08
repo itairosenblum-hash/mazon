@@ -170,13 +170,63 @@ body::before {
   display: none;
   position: fixed;
   top: 0; right: 0; left: 0;
-  height: var(--topbar-h);
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
   z-index: 300;
+  flex-direction: column;
+  padding: 0;
+}
+.topbar-row1 {
+  display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 1rem;
+  height: var(--topbar-h);
+  width: 100%;
+}
+.topbar-row2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  width: 100%;
+  flex-wrap: nowrap;
+}
+.period-select-sm {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 5px 6px;
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+.period-nav-sm {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  flex: 1.2;
+}
+.date-range-sm {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.62rem;
+  color: var(--text);
+  flex: 1;
+  text-align: center;
+  padding: 0 4px;
+  line-height: 30px;
+  height: 30px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .topbar-logo {
   display: flex;
@@ -1304,43 +1354,3 @@ tr:hover td { background: var(--bg3); }
   padding-right: 4px;
 }
 
-/* ══ STICKY DASHBOARD HEADER ══ */
-#page-dashboard .page-header {
-  position: sticky;
-  top: 0;
-  z-index: 80;
-  background: var(--bg);
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
-  margin-bottom: 1.25rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-}
-
-@media (max-width: 768px) {
-  /* main-content: fixed scroll container, starts right below topbar */
-  .main-content {
-    position: fixed;
-    top: var(--topbar-h);
-    right: 0;
-    left: 0;
-    bottom: 60px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-top: 0 !important;
-  }
-  /* Remove extra padding from main-content on mobile */
-  .main-content {
-    padding: 0.75rem 1rem 1rem !important;
-  }
-  /* Dashboard header: sticky at top of scroll container */
-  #page-dashboard .page-header {
-    position: sticky;
-    top: -0.75rem;
-    margin-top: -0.75rem;
-    padding: 0.6rem 0;
-    margin-bottom: 0.75rem;
-    z-index: 80;
-    background: var(--bg);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-  }
-}
