@@ -333,6 +333,16 @@ function navigate(page) {
   const link = document.querySelector(`[data-page="${page}"]`);
   if (link) link.classList.add('active');
   currentPage = page;
+  // Mobile: show dashboard controls row in topbar
+  const tbDashRow = document.getElementById('tbDashRow');
+  if (tbDashRow) tbDashRow.style.display = page === 'dashboard' ? 'flex' : 'none';
+  // Adjust main-content top padding
+  if (window.innerWidth <= 768) {
+    const mc = document.querySelector('.main-content');
+    if (mc) mc.style.paddingTop = page === 'dashboard'
+      ? 'calc(var(--topbar-h) + 42px + 0.75rem)'
+      : 'calc(var(--topbar-h) + 0.75rem)';
+  }
   renderPage(page);
 }
 
@@ -441,8 +451,13 @@ function renderDashboard() {
   const stationSel = document.getElementById('dashboardStation');
   if (stationSel) {
     const currentVal = stationSel.value;
-    stationSel.innerHTML = '<option value="">כל התחנות</option>' +
-      allowedStations().map(s => `<option value="${s.id}"${s.id===currentVal?' selected':''}>${s.name}</option>`).join('');
+    const stOpts = '<option value="">כל התחנות</option>' +
+      allowedStations().map(s=>`<option value="${s.id}"${s.id===currentVal?' selected':''}>${s.name}</option>`).join('');
+    stationSel.innerHTML = stOpts;
+    const tbSt=document.getElementById('tbStation');
+    if(tbSt){tbSt.innerHTML=stOpts;tbSt.value=currentVal;}
+    const tbPer=document.getElementById('tbPeriod');
+    if(tbPer) tbPer.value=String(period);
   }
   const selectedStationId = stationSel ? stationSel.value : '';
   // Filter by selected station
@@ -455,14 +470,9 @@ function renderDashboard() {
   // Show date range using getPeriodRange
   const { from: fromDate, to: toDate } = getPeriodRange(period);
   const fmtShort = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-  const rangeEl = document.getElementById('dashboardDateRange');
-  if (rangeEl) {
-    rangeEl.textContent = period === 1
-      ? fmtShort(toDate)
-      : `${fmtShort(fromDate)} — ${fmtShort(toDate)}`;
-  }
-  const nextBtn = document.getElementById('periodNext');
-  if (nextBtn) nextBtn.disabled = periodOffset >= 0;
+  const rangeText = period===1 ? fmtShort(toDate) : `${fmtShort(fromDate)} — ${fmtShort(toDate)}`;
+  ['dashboardDateRange','tbDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=rangeText;});
+  ['periodNext','tbNext'].forEach(id=>{const btn=document.getElementById(id);if(btn)btn.disabled=periodOffset>=0;});
   const C = getChartColors();
   const visibleStations = selectedStationId
     ? allowedStations().filter(s => s.id === selectedStationId)
@@ -1305,6 +1315,22 @@ document.querySelectorAll('.bottom-nav-item').forEach(btn=>{
   });
 });
 
+
+
+// ─────────────────────────────────────────────
+// TOPBAR DASHBOARD CONTROLS (mobile)
+// ─────────────────────────────────────────────
+function tbSyncPeriod(val) {
+  document.getElementById('dashboardPeriod').value = val;
+  periodOffset = 0;
+  renderDashboard();
+}
+function tbSyncStation(val) {
+  document.getElementById('dashboardStation').value = val;
+  renderDashboard();
+}
+function tbPrev() { periodOffset--; renderDashboard(); }
+function tbNext() { if (periodOffset < 0) { periodOffset++; renderDashboard(); } }
 
 // ─────────────────────────────────────────────
 // INIT
