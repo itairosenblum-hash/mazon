@@ -324,7 +324,6 @@ let currentPage = 'dashboard';
 let editingStationId = null;
 
 function navigate(page) {
-  // Non-admin: block admin-only pages
   if (!isAdmin() && ['stations','settings','users'].includes(page)) {
     page = 'dashboard';
   }
@@ -334,6 +333,13 @@ function navigate(page) {
   const link = document.querySelector(`[data-page="${page}"]`);
   if (link) link.classList.add('active');
   currentPage = page;
+
+  // Show/hide topbar dashboard controls row on mobile
+  const row2 = document.getElementById('topbarDashControls');
+  const mc = document.querySelector('.main-content');
+  if (row2) row2.style.display = page === 'dashboard' ? 'flex' : 'none';
+  if (mc) mc.classList.toggle('dashboard-active', page === 'dashboard');
+
   renderPage(page);
 }
 
@@ -438,12 +444,23 @@ let chartStation=null, chartRole=null, chartTrend=null;
 function renderDashboard() {
   const period = parseInt(document.getElementById('dashboardPeriod').value) || 30;
 
+  // Sync mobile topbar controls with desktop values
+  const isMobileView = window.innerWidth <= 768;
+  if (isMobileView) {
+    const mPeriod = document.getElementById('dashboardPeriodMobile');
+    const dPeriod = document.getElementById('dashboardPeriod');
+    if (mPeriod && mPeriod.value !== String(period)) mPeriod.value = String(period);
+  }
+
   // Populate station filter dropdown
   const stationSel = document.getElementById('dashboardStation');
   if (stationSel) {
     const currentVal = stationSel.value;
-    stationSel.innerHTML = '<option value="">כל התחנות</option>' +
+    const opts = '<option value="">כל התחנות</option>' +
       allowedStations().map(s => `<option value="${s.id}"${s.id===currentVal?' selected':''}>${s.name}</option>`).join('');
+    stationSel.innerHTML = opts;
+    const mSel = document.getElementById('dashboardStationMobile');
+    if (mSel) { mSel.innerHTML = opts; mSel.value = currentVal; }
   }
   const selectedStationId = stationSel ? stationSel.value : '';
   // Filter by selected station
@@ -456,15 +473,16 @@ function renderDashboard() {
   // Show date range using getPeriodRange
   const { from: fromDate, to: toDate } = getPeriodRange(period);
   const fmtShort = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-  const rangeEl = document.getElementById('dashboardDateRange');
-  if (rangeEl) {
-    rangeEl.textContent = period === 1
-      ? fmtShort(toDate)
-      : `${fmtShort(fromDate)} — ${fmtShort(toDate)}`;
-  }
-  // Disable next button if already at current period
-  const nextBtn = document.getElementById('periodNext');
-  if (nextBtn) nextBtn.disabled = periodOffset >= 0;
+  const rangeText = period === 1 ? fmtShort(toDate) : `${fmtShort(fromDate)} — ${fmtShort(toDate)}`;
+  ['dashboardDateRange','dashboardDateRangeMobile'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = rangeText;
+  });
+  // Disable next buttons
+  ['periodNext','periodNextMobile'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = periodOffset >= 0;
+  });
   const C = getChartColors();
   const visibleStations = selectedStationId
     ? allowedStations().filter(s => s.id === selectedStationId)
@@ -904,6 +922,25 @@ function renderDashboardNotes(entries, period) {
 
 
 function destroyChart(chart) { if(chart){try{chart.destroy();}catch(e){}} }
+// Mobile topbar controls sync with desktop
+['dashboardPeriodMobile'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', () => {
+    document.getElementById('dashboardPeriod').value = el.value;
+    periodOffset = 0;
+    renderDashboard();
+  });
+});
+['dashboardStationMobile'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', () => {
+    document.getElementById('dashboardStation').value = el.value;
+    renderDashboard();
+  });
+});
+document.getElementById('periodPrevMobile').addEventListener('click', () => { periodOffset--; renderDashboard(); });
+document.getElementById('periodNextMobile').addEventListener('click', () => { if(periodOffset<0){periodOffset++;renderDashboard();} });
+
 document.getElementById('dashboardPeriod').addEventListener('change', () => {
   periodOffset = 0;
   renderDashboard();
