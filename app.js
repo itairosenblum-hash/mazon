@@ -45,6 +45,19 @@ function updateTopbarTheme(theme) {
   if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
 }
 
+
+// ─────────────────────────────────────────────
+// COMPLIANCE COLOR HELPER
+// ─────────────────────────────────────────────
+function complianceColor(actual, required) {
+  if (required === 0) return { bg: 'rgba(90,160,224,0.75)', border: '#5aa0e0' }; // no requirement - blue
+  const ratio = actual / required;
+  if (actual > required)  return { bg: 'rgba(0,230,100,0.85)',  border: '#00e664' }; // above - bright green
+  if (actual === required) return { bg: 'rgba(82,192,122,0.80)', border: '#52c07a' }; // exact - normal green
+  if (ratio >= 0.5)        return { bg: 'rgba(224,122,58,0.80)', border: '#e07a3a' }; // below - orange
+  return                          { bg: 'rgba(224,82,82,0.85)',  border: '#e05252' }; // below 50% - red
+}
+
 // ─────────────────────────────────────────────
 // ROLE EMOJIS
 // ─────────────────────────────────────────────
@@ -582,15 +595,15 @@ function renderDashboard() {
         {
           label:'בפועל (ממוצע יומי)',
           data: roleTotals.map(r=>r.avgActual),
-          backgroundColor: 'rgba(90,160,224,0.75)',
-          borderColor: '#5aa0e0',
+          backgroundColor: roleTotals.map(r=>complianceColor(r.avgActual,r.required).bg),
+          borderColor: roleTotals.map(r=>complianceColor(r.avgActual,r.required).border),
           borderWidth:2, borderRadius:4
         },
         {
           label:'תקן נדרש',
           data: roleTotals.map(r=>r.required),
-          backgroundColor: 'rgba(232,197,71,0.25)',
-          borderColor: '#e8c547',
+          backgroundColor: 'rgba(160,160,160,0.18)',
+          borderColor: 'rgba(160,160,160,0.55)',
           borderWidth:2, borderRadius:4
         }
       ]
