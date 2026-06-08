@@ -1303,3 +1303,23 @@ tr:hover td { background: var(--bg3); }
   line-height: 1.5;
   padding-right: 4px;
 }
+
+/* ══ STICKY DASHBOARD HEADER ══ */
+#page-dashboard .page-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg);
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+/* On mobile, top = topbar height */
+@media (max-width: 768px) {
+  #page-dashboard .page-header {
+    top: var(--topbar-h);
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
+}
