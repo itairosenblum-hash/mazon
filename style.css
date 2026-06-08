@@ -1202,3 +1202,58 @@ tr:hover td { background: var(--bg3); }
   .page-header { flex-direction: column; align-items: flex-start; }
   .page-header h1 { font-size: 1.1rem; }
 }
+
+/* ══ ENTRY NOTE ══ */
+.entry-note-wrap {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.entry-note-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.entry-note-input {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: 'Heebo', sans-serif;
+  font-size: 0.92rem;
+  padding: 10px 12px;
+  resize: vertical;
+  min-height: 80px;
+  width: 100%;
+  transition: border-color 0.15s;
+  line-height: 1.5;
+}
+.entry-note-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.entry-note-input::placeholder { color: var(--text3); }
+
+/* ══ NOTE IN RECENT ENTRIES ══ */
+.recent-entry-note {
+  font-size: 0.75rem;
+  color: var(--text2);
+  margin-top: 4px;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* ══ NOTE IN HISTORY TABLE ══ */
+.history-note-cell { max-width: 200px; }
+.history-note {
+  font-size: 0.75rem;
+  color: var(--text2);
+  font-style: italic;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
