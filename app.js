@@ -63,7 +63,14 @@ const SESSION_KEY = 'catering_session';
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migrate old state that has no users array
+      if (!parsed.users || parsed.users.length === 0) {
+        parsed.users = defaultState().users;
+      }
+      return parsed;
+    }
   } catch(e) {}
   return defaultState();
 }
@@ -131,7 +138,10 @@ function showLoginScreen() {
   document.getElementById('loginError').textContent = '';
   document.getElementById('loginUsername').value = '';
   document.getElementById('loginPassword').value = '';
-  setTimeout(() => document.getElementById('loginUsername').focus(), 100);
+  setTimeout(() => {
+    const el = document.getElementById('loginUsername');
+    if (el) el.focus();
+  }, 150);
 }
 
 function showAppShell() {
@@ -170,14 +180,22 @@ document.getElementById('loginUsername').addEventListener('keydown', e => {
 
 function doLogin() {
   const u = document.getElementById('loginUsername').value.trim();
-  const p = document.getElementById('loginPassword').value;
-  if (!u || !p) { document.getElementById('loginError').textContent = 'יש להזין שם משתמש וסיסמה'; return; }
+  const p = document.getElementById('loginPassword').value.trim();
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if (!u || !p) { errEl.textContent = 'יש להזין שם משתמש וסיסמה'; return; }
+  // Ensure users exist in state (migration safety)
+  if (!state.users || state.users.length === 0) {
+    state.users = defaultState().users;
+    saveState();
+  }
   if (login(u, p)) {
     showAppShell();
     navigate('dashboard');
   } else {
-    document.getElementById('loginError').textContent = 'שם משתמש או סיסמה שגויים';
+    errEl.textContent = 'שם משתמש או סיסמה שגויים';
     document.getElementById('loginPassword').value = '';
+    document.getElementById('loginPassword').focus();
   }
 }
 
