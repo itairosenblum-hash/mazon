@@ -794,7 +794,7 @@ tr:hover td { background: var(--bg3); }
   /* Main shifts down for topbar and up for bottom nav */
   .main-content {
     margin-right: 0;
-    padding: calc(var(--topbar-h) + 1rem) 1rem calc(60px + 1rem);
+    padding: calc(var(--mobile-content-top, var(--topbar-h)) + 0.75rem) 0.9rem calc(60px + 0.75rem);
     max-width: 100vw;
   }
 
@@ -1221,6 +1221,8 @@ tr:hover td { background: var(--bg3); }
   .date-range-label { font-size: 0.68rem; }
   .page-header { flex-direction: column; align-items: flex-start; }
   .page-header h1 { font-size: 1.1rem; }
+  /* Hide dashboard page-header on mobile — controls are in topbar */
+  #page-dashboard .page-header { display: none; }
 
   #page-dashboard .page-header h1 {
     font-size: 0.95rem;
