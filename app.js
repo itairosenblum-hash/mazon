@@ -521,15 +521,15 @@ function renderDashboard() {
         {
           label:'בפועל (ממוצע יומי)',
           data: stationTotals.map(s=>s.actual),
-          backgroundColor: 'rgba(90,160,224,0.75)',
-          borderColor: '#5aa0e0',
+          backgroundColor: stationTotals.map(s=>complianceColor(s.actual,s.required).bg),
+          borderColor: stationTotals.map(s=>complianceColor(s.actual,s.required).border),
           borderWidth:2, borderRadius:5
         },
         {
-          label:'נדרש לפי חוזה',
+          label:'תקן נדרש',
           data: stationTotals.map(s=>s.required),
-          backgroundColor: 'rgba(232,197,71,0.25)',
-          borderColor: '#e8c547',
+          backgroundColor: 'rgba(160,160,160,0.18)',
+          borderColor: 'rgba(160,160,160,0.55)',
           borderWidth:2, borderRadius:5
         }
       ]
