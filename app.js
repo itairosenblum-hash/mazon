@@ -121,6 +121,25 @@ async function syncToSheets() {
   }
 }
 
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  scheduleSave();
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (!parsed.users || parsed.users.length === 0) {
+        parsed.users = defaultState().users;
+      }
+      return parsed;
+    }
+  } catch(e) {}
+  return defaultState();
+}
+
 async function loadFromSheets() {
   setSyncStatus('saving');
   try {
