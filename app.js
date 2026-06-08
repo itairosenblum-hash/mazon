@@ -528,8 +528,8 @@ function renderDashboard() {
         {
           label:'תקן נדרש',
           data: stationTotals.map(s=>s.required),
-          backgroundColor: 'rgba(160,160,160,0.18)',
-          borderColor: 'rgba(160,160,160,0.55)',
+          backgroundColor: 'rgba(140,140,140,0.35)',
+          borderColor: 'rgba(120,120,120,0.9)',
           borderWidth:2, borderRadius:5
         }
       ]
@@ -602,8 +602,8 @@ function renderDashboard() {
         {
           label:'תקן נדרש',
           data: roleTotals.map(r=>r.required),
-          backgroundColor: 'rgba(160,160,160,0.18)',
-          borderColor: 'rgba(160,160,160,0.55)',
+          backgroundColor: 'rgba(140,140,140,0.35)',
+          borderColor: 'rgba(120,120,120,0.9)',
           borderWidth:2, borderRadius:4
         }
       ]
