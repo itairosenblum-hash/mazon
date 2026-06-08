@@ -641,6 +641,78 @@ function renderDashboard() {
 }
 
 
+
+// ─────────────────────────────────────────────
+// EDIT ENTRY (Admin only)
+// ─────────────────────────────────────────────
+function openEditEntry(entryId) {
+  const entry = state.entries.find(e => e.id === entryId);
+  if (!entry) return;
+  const station = getStation(entry.stationId);
+
+  document.getElementById('editEntryId').value = entryId;
+  document.getElementById('editEntryDate').value = entry.date;
+  document.getElementById('editEntryStation').textContent = station ? station.name : '?';
+
+  // Render role inputs
+  const container = document.getElementById('editEntryRoles');
+  container.innerHTML = state.roles.map(role => {
+    const min = station ? ((station.minStaff||{})[role]||0) : 0;
+    const val = entry.counts[role] || 0;
+    return `<div class="role-input-card">
+      <div class="role-input-info">
+        <span class="role-emoji">${roleEmoji(role)}</span>
+        <div>
+          <div class="role-name">${role}</div>
+          ${min>0?`<div class="role-required">נדרש: ${min}</div>`:''}
+        </div>
+      </div>
+      <input class="role-count-input" type="number" min="0" max="99" value="${val}" data-role="${role}" />
+    </div>`;
+  }).join('');
+
+  document.getElementById('editEntryNote').value = entry.note || '';
+  document.getElementById('editEntryModal').style.display = 'flex';
+}
+
+document.getElementById('btnSaveEditEntry').addEventListener('click', () => {
+  const entryId = document.getElementById('editEntryId').value;
+  const entry = state.entries.find(e => e.id === entryId);
+  if (!entry) return;
+
+  const counts = {};
+  document.querySelectorAll('#editEntryRoles .role-count-input').forEach(input => {
+    counts[input.dataset.role] = parseInt(input.value) || 0;
+  });
+  entry.counts = counts;
+  entry.note = document.getElementById('editEntryNote').value.trim();
+  entry.editedBy = currentUser.id;
+  entry.editedAt = new Date().toISOString();
+
+  saveState();
+  closeEditEntryModal();
+  showMsg('saveMsg', '✓ ההזנה עודכנה');
+  renderHistoryTable();
+});
+
+document.getElementById('btnDeleteEntry').addEventListener('click', () => {
+  const entryId = document.getElementById('editEntryId').value;
+  if (!confirm('למחוק הזנה זו לצמיתות?')) return;
+  state.entries = state.entries.filter(e => e.id !== entryId);
+  saveState();
+  closeEditEntryModal();
+  renderHistoryTable();
+});
+
+document.getElementById('btnCancelEditEntry').addEventListener('click', closeEditEntryModal);
+document.getElementById('editEntryModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('editEntryModal')) closeEditEntryModal();
+});
+
+function closeEditEntryModal() {
+  document.getElementById('editEntryModal').style.display = 'none';
+}
+
 // ─────────────────────────────────────────────
 // STATION DRILLDOWN MODAL
 // ─────────────────────────────────────────────
@@ -876,15 +948,22 @@ function renderHistoryTable() {
   const container=document.getElementById('historyTable');
   if(!filtered.length){container.innerHTML='<div class="empty-state"><span class="emoji">🔍</span>אין נתונים לתקופה זו</div>';return;}
   container.innerHTML=`<div class="chart-card full" style="margin-top:0"><table>
-    <thead><tr><th>תאריך</th><th>תחנה</th>${state.roles.map(r=>`<th>${roleEmoji(r)} ${r}</th>`).join('')}<th>סה"כ</th><th>הערה</th></tr></thead>
+    <thead><tr><th>תאריך</th><th>תחנה</th>${state.roles.map(r=>`<th>${roleEmoji(r)} ${r}</th>`).join('')}<th>סה"כ</th><th>הערה</th>${isAdmin()?'<th></th>':''}</tr></thead>
     <tbody>${filtered.map(e=>{
       const s=getStation(e.stationId);
-      return `<tr><td>${formatDate(e.date)}</td><td><strong>${s?s.name:'?'}</strong></td>${state.roles.map(r=>{
-        const val=e.counts[r]||0;
-        const min=s?((s.minStaff||{})[r]||0):0;
-        const ok=min===0||val>=min;
-        return `<td style="color:${val===0?'var(--text3)':ok?'var(--text)':'var(--red)'}">${val}</td>`;
-      }).join('')}<td><strong>${totalForEntry(e)}</strong></td><td class="history-note-cell">${e.note?`<span class="history-note">💬 ${e.note}</span>`:''}</td></tr>`;
+      return `<tr>
+        <td>${formatDate(e.date)}</td>
+        <td><strong>${s?s.name:'?'}</strong></td>
+        ${state.roles.map(r=>{
+          const val=e.counts[r]||0;
+          const min=s?((s.minStaff||{})[r]||0):0;
+          const ok=min===0||val>=min;
+          return `<td style="color:${val===0?'var(--text3)':ok?'var(--text)':'var(--red)'}">${val}</td>`;
+        }).join('')}
+        <td><strong>${totalForEntry(e)}</strong></td>
+        <td class="history-note-cell">${e.note?`<span class="history-note">💬 ${e.note}</span>`:''}</td>
+        ${isAdmin()?`<td><button class="btn-icon edit-entry-btn" onclick="openEditEntry('${e.id}')">✏ עריכה</button></td>`:'<td></td>'}
+      </tr>`;
     }).join('')}</tbody></table></div>`;
 }
 
