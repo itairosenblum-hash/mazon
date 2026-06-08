@@ -1257,3 +1257,10 @@ tr:hover td { background: var(--bg3); }
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* ══ ROLE CHART DYNAMIC HEIGHT ══ */
+.chart-roles-wrap {
+  position: relative;
+  /* height set dynamically by JS based on number of roles */
+  min-height: 200px;
+}
