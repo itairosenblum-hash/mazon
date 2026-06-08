@@ -1,5 +1,5 @@
 // Service Worker - mazon catering tracker
-const VERSION = 'v6';
+const VERSION = 'v7';
 const CACHE = 'mazon-' + VERSION;
 const ASSETS = ['/', '/index.html', '/style.css', '/app.js', '/manifest.json'];
 
