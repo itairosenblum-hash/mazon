@@ -389,6 +389,19 @@ let chartStation=null, chartRole=null, chartTrend=null;
 
 function renderDashboard() {
   const period = parseInt(document.getElementById('dashboardPeriod').value) || 30;
+
+  // Populate station filter dropdown
+  const stationSel = document.getElementById('dashboardStation');
+  if (stationSel) {
+    const currentVal = stationSel.value;
+    stationSel.innerHTML = '<option value="">כל התחנות</option>' +
+      allowedStations().map(s => `<option value="${s.id}"${s.id===currentVal?' selected':''}>${s.name}</option>`).join('');
+  }
+  const selectedStationId = stationSel ? stationSel.value : '';
+  // Filter by selected station
+  let entries = entriesInPeriod(period);
+  if (selectedStationId) entries = entries.filter(e => e.stationId === selectedStationId);
+
   const periodLabels = {1:'היום',7:'שבוע אחרון',30:'חודש אחרון',90:'רבעון אחרון',365:'שנה אחרונה'};
   document.getElementById('chartPeriodLabel').textContent = periodLabels[period] || period + ' ימים';
 
@@ -404,9 +417,10 @@ function renderDashboard() {
   // Disable next button if already at current period
   const nextBtn = document.getElementById('periodNext');
   if (nextBtn) nextBtn.disabled = periodOffset >= 0;
-  const entries = entriesInPeriod(period);
   const C = getChartColors();
-  const visibleStations = isAdmin() ? state.stations : allowedStations();
+  const visibleStations = selectedStationId
+    ? allowedStations().filter(s => s.id === selectedStationId)
+    : allowedStations();
 
   const totalPresence = entries.reduce((s,e) => s + totalForEntry(e), 0);
   const avgPerDay = (totalPresence / period).toFixed(1);
@@ -537,7 +551,9 @@ function renderDashboard() {
     date,
     total: state.entries
       .filter(e=>{ if(!isAdmin()) return currentUser.stationIds.includes(e.stationId); return true; })
-      .filter(e=>e.date===date).reduce((s,e)=>s+totalForEntry(e),0)
+      .filter(e=>e.date===date)
+      .filter(e=> selectedStationId ? e.stationId===selectedStationId : true)
+      .reduce((s,e)=>s+totalForEntry(e),0)
   }));
   const maxTicks = trendDays <= 7 ? trendDays : trendDays <= 30 ? 10 : 12;
   destroyChart(chartTrend);
@@ -668,9 +684,10 @@ document.getElementById('drilldownModal').addEventListener('click', e=>{
 
 function destroyChart(chart) { if(chart){try{chart.destroy();}catch(e){}} }
 document.getElementById('dashboardPeriod').addEventListener('change', () => {
-  periodOffset = 0; // reset offset when changing period type
+  periodOffset = 0;
   renderDashboard();
 });
+document.getElementById('dashboardStation').addEventListener('change', renderDashboard);
 
 // Period navigation
 let periodOffset = 0; // 0 = current, -1 = previous period, +1 = next period (future, capped at 0)
