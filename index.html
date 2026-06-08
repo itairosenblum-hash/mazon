@@ -284,6 +284,37 @@
     </div>
 
 
+
+    <!-- EDIT ENTRY MODAL (Admin only) -->
+    <div class="modal-overlay" id="editEntryModal" style="display:none">
+      <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto">
+        <div class="modal-title">✏️ עריכת הזנה</div>
+        <input type="hidden" id="editEntryId" />
+        <div style="display:flex;gap:12px;margin-bottom:1rem;flex-wrap:wrap">
+          <div class="form-group" style="flex:1">
+            <label>📅 תאריך</label>
+            <input type="date" id="editEntryDate" class="roles-min-input" style="width:100%;padding:8px 10px" readonly />
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>🏪 תחנה</label>
+            <div style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.9rem" id="editEntryStation"></div>
+          </div>
+        </div>
+        <div id="editEntryRoles" class="entry-roles"></div>
+        <div class="entry-note-wrap" style="margin-top:0.75rem">
+          <label class="entry-note-label">💬 הערה</label>
+          <textarea id="editEntryNote" class="entry-note-input" placeholder="הערה חופשית..."></textarea>
+        </div>
+        <div class="modal-actions" style="margin-top:1.25rem;justify-content:space-between">
+          <div style="display:flex;gap:8px">
+            <button class="btn-save" id="btnSaveEditEntry">שמור שינויים</button>
+            <button class="btn-cancel" id="btnCancelEditEntry">ביטול</button>
+          </div>
+          <button class="btn-danger" id="btnDeleteEntry">🗑 מחק הזנה</button>
+        </div>
+      </div>
+    </div>
+
     <!-- DRILLDOWN MODAL -->
     <div class="modal-overlay drilldown-overlay" id="drilldownModal" style="display:none">
       <div class="modal drilldown-modal">
