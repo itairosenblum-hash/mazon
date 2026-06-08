@@ -531,6 +531,11 @@ function renderDashboard() {
     return { role, emoji:roleEmoji(role), avgActual, required, color: C.palette[i%C.palette.length] };
   }).filter(r => r.avgActual > 0 || r.required > 0);
 
+  // Set dynamic height: 52px per role row + padding
+  const roleChartH = Math.max(200, roleTotals.length * 52 + 60);
+  const roleWrap = document.querySelector('.chart-roles-wrap');
+  if (roleWrap) roleWrap.style.height = roleChartH + 'px';
+
   destroyChart(chartRole);
   chartRole = new Chart(document.getElementById('chartByRole'),{
     type:'bar',
