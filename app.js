@@ -331,9 +331,16 @@ function allowedStations() {
 }
 
 function entriesInPeriod(days) {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-  let entries = state.entries.filter(e => new Date(e.date) >= cutoff);
+  let entries;
+  if (days === 1) {
+    // Today only
+    const todayStr = today();
+    entries = state.entries.filter(e => e.date === todayStr);
+  } else {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    entries = state.entries.filter(e => new Date(e.date) >= cutoff);
+  }
   if (!isAdmin()) entries = entries.filter(e => currentUser.stationIds.includes(e.stationId));
   return entries;
 }
@@ -369,7 +376,8 @@ let chartStation=null, chartRole=null, chartTrend=null;
 
 function renderDashboard() {
   const period = parseInt(document.getElementById('dashboardPeriod').value) || 30;
-  document.getElementById('chartPeriodLabel').textContent = period + ' ימים';
+  const periodLabels = {1:'היום',7:'שבוע אחרון',30:'חודש אחרון',90:'רבעון אחרון',365:'שנה אחרונה'};
+  document.getElementById('chartPeriodLabel').textContent = periodLabels[period] || period + ' ימים';
   const entries = entriesInPeriod(period);
   const C = getChartColors();
   const visibleStations = isAdmin() ? state.stations : allowedStations();
@@ -390,8 +398,9 @@ function renderDashboard() {
   const compliancePct = total ? Math.round((compliant/total)*100) : 100;
   const compColor = compliancePct>=90 ? '#52c07a' : compliancePct>=70 ? '#e07a3a' : '#e05252';
 
+  const periodSubLabel = {1:'היום',7:'שבוע',30:'חודש',90:'רבעון',365:'שנה'}[period] || period+' ימים';
   const cards = [
-    { label: 'סה"כ עובדים', value: totalPresence, sub: period+' ימים', color:'#e8c547', icon:'🍽' },
+    { label: 'סה"כ עובדים', value: totalPresence, sub: periodSubLabel, color:'#e8c547', icon:'🍽' },
     { label: 'ממוצע ליום',  value: avgPerDay,     sub: 'כלל התחנות',  color:'#5aa0e0', icon:'📅' },
     { label: 'תחנות פעילות',value: stationsActive+'/'+visibleStations.length, sub:'דיווחו', color:'#9b7fe8', icon:'🏪' },
     { label: 'עמידה בדרישות',value: compliancePct+'%', sub:'מינימום כ"א', color:compColor, icon:'✅' },
@@ -488,23 +497,31 @@ function renderDashboard() {
     }
   });
 
+  // Build trend — for daily show last 30 days, otherwise show days in period
+  const trendDays = period === 1 ? 30 : period;
   const daysArr = [];
-  for (let i=period-1;i>=0;i--) { const d=new Date(); d.setDate(d.getDate()-i); daysArr.push(d.toISOString().slice(0,10)); }
+  for (let i=trendDays-1;i>=0;i--) { const d=new Date(); d.setDate(d.getDate()-i); daysArr.push(d.toISOString().slice(0,10)); }
   const trendData = daysArr.map(date=>({
     date,
-    total: entries.filter(e=>e.date===date).reduce((s,e)=>s+totalForEntry(e),0)
+    total: state.entries
+      .filter(e=>{ if(!isAdmin()) return currentUser.stationIds.includes(e.stationId); return true; })
+      .filter(e=>e.date===date).reduce((s,e)=>s+totalForEntry(e),0)
   }));
+  const maxTicks = trendDays <= 7 ? trendDays : trendDays <= 30 ? 10 : 12;
   destroyChart(chartTrend);
   chartTrend = new Chart(document.getElementById('chartTrend'),{
     type:'line',
     data:{ labels:daysArr.map(d=>formatDate(d)), datasets:[{
       label:'עובדים', data:trendData.map(d=>d.total),
       borderColor:'#e8c547', backgroundColor:'rgba(232,197,71,0.07)',
-      fill:true, tension:0.35, pointRadius:3, pointBackgroundColor:'#e8c547'
+      fill:true, tension:0.35, pointRadius: trendDays<=7?5:3, pointBackgroundColor:'#e8c547'
     }]},
     options:{ responsive:true, maintainAspectRatio:false,
       plugins:{legend:{display:false}},
-      scales:{ x:{ticks:{color:C.tick,maxTicksLimit:10,font:{family:'Heebo'}},grid:{color:C.grid}}, y:{ticks:{color:C.tick},grid:{color:C.grid}} }
+      scales:{
+        x:{ticks:{color:C.tick,maxTicksLimit:maxTicks,font:{family:'Heebo'}},grid:{color:C.grid}},
+        y:{ticks:{color:C.tick},grid:{color:C.grid}}
+      }
     }
   });
 
