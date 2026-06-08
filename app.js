@@ -378,6 +378,22 @@ function renderDashboard() {
   const period = parseInt(document.getElementById('dashboardPeriod').value) || 30;
   const periodLabels = {1:'היום',7:'שבוע אחרון',30:'חודש אחרון',90:'רבעון אחרון',365:'שנה אחרונה'};
   document.getElementById('chartPeriodLabel').textContent = periodLabels[period] || period + ' ימים';
+
+  // Show date range
+  const toDate = new Date();
+  const fromDate = new Date();
+  if (period === 1) {
+    fromDate.setDate(fromDate.getDate());
+  } else {
+    fromDate.setDate(fromDate.getDate() - (period - 1));
+  }
+  const fmtShort = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  const rangeEl = document.getElementById('dashboardDateRange');
+  if (rangeEl) {
+    rangeEl.textContent = period === 1
+      ? fmtShort(toDate)
+      : `${fmtShort(fromDate)} — ${fmtShort(toDate)}`;
+  }
   const entries = entriesInPeriod(period);
   const C = getChartColors();
   const visibleStations = isAdmin() ? state.stations : allowedStations();
@@ -671,14 +687,15 @@ function renderRoleInputs() {
     return;
   }
   const date = document.getElementById('entryDate').value;
-  const existing = state.entries.find(e=>e.stationId===stationId && e.date===date);
+  const existing = state.entries.find(e=>e.stationId===stationId && e.date===date); // undefined if not found
   container.innerHTML = state.roles.map(role=>{
     const min = station?((station.minStaff||{})[role]||0):0;
-    const val = existing?(existing.counts[role]||0):'';
+    // Default: if existing entry use its value, otherwise pre-fill with minStaff (contract requirement)
+    const val = existing !== undefined ? (existing.counts[role]||0) : min;
     return `<div class="role-input-card">
       <div class="role-input-info">
         <span class="role-emoji">${roleEmoji(role)}</span>
-        <div><div class="role-name">${role}</div>${min>0?`<div class="role-required">מינימום: ${min}</div>`:''}</div>
+        <div><div class="role-name">${role}</div>${min>0?`<div class="role-required">נדרש: ${min}</div>`:''}</div>
       </div>
       <input class="role-count-input" type="number" min="0" max="99" value="${val}" placeholder="0" data-role="${role}" />
     </div>`;
