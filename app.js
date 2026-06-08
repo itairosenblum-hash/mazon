@@ -4,7 +4,7 @@
 const THEME_KEY = 'catering_theme';
 
 function initTheme() {
-  const saved = localStorage.getItem(THEME_KEY) || 'dark';
+  const saved = localStorage.getItem(THEME_KEY) || 'light';
   document.documentElement.setAttribute('data-theme', saved);
   updateThemeLabel(saved);
 }
@@ -21,9 +21,34 @@ function toggleTheme() {
 function updateThemeLabel(theme) {
   const el = document.getElementById('themeLabel');
   if (el) el.textContent = theme === 'dark' ? 'מצב כהה' : 'מצב בהיר';
+  updateTopbarTheme(theme);
 }
 
 initTheme();
+
+// ─────────────────────────────────────────────
+// MOBILE DRAWER
+// ─────────────────────────────────────────────
+function toggleDrawer() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('drawerOverlay');
+  const isOpen = sidebar.classList.contains('open');
+  if (isOpen) { closeDrawer(); } else {
+    sidebar.classList.add('open');
+    overlay.classList.add('open');
+  }
+}
+function closeDrawer() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+}
+
+// Update topbar theme icon
+function updateTopbarTheme(theme) {
+  const btn = document.querySelector('.topbar-theme');
+  if (btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+
 
 // ─────────────────────────────────────────────
 // ROLE EMOJIS
@@ -615,4 +640,27 @@ document.getElementById('btnReset').addEventListener('click', () => {
 // ─────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────
+
+// Bottom nav clicks
+document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+  btn.addEventListener('click', () => {
+    navigate(btn.dataset.page);
+    document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    closeDrawer();
+  });
+});
+
+// Also close drawer on sidebar nav clicks on mobile
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', () => {
+    closeDrawer();
+    // sync bottom nav
+    const page = link.dataset.page;
+    document.querySelectorAll('.bottom-nav-item').forEach(b => {
+      b.classList.toggle('active', b.dataset.page === page);
+    });
+  });
+});
+
 navigate('dashboard');
