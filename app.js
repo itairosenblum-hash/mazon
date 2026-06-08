@@ -63,7 +63,7 @@ const SESSION_KEY = 'catering_session';
 // ─────────────────────────────────────────────
 // GOOGLE SHEETS SYNC (JSONP — no CORS issues)
 // ─────────────────────────────────────────────
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwD7HaEhGRwSMy_KvS-k5RHzbwisd4d2ehDJAw7_ep9sNsiSK3hArtVdk-yCXmqaoC-bQ/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyHAMw56oIoMzJQdGlRDSComslz3IB7uHARUXCwcg1KmesC98l2qRYMUC_8DdtyZN2DLQ/exec';
 let syncTimeout = null;
 
 function scheduleSave() {
