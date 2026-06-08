@@ -49,10 +49,45 @@ function updateTopbarTheme(theme) {
 // ROLE EMOJIS
 // ─────────────────────────────────────────────
 const ROLE_EMOJIS = {
-  'שף': '👨‍🍳', 'טבח': '🧑‍🍳', 'קונדיטור': '🎂',
-  'חדר אוכל': '🍽', 'שוטף כלים': '🫧', 'מנהל תחנה': '📋',
+  'שף':          '🧑‍🍳',   // chef hat
+  'טבח':         '🍳',    // frying pan - cook
+  'שף לילה':     '🌙',    // night chef
+  'טבח לילה':    '🌛',    // night cook
+  'קונדיטור':    '🧁',    // cupcake - pastry
+  'חדר אוכל':   '🍽️',   // plate - dining room
+  'אחראי חדר אוכל': '🫅', // service manager
+  'שוטף כלים':  '🧼',    // soap - dishwasher
+  'מנהל תחנה':  '📋',    // clipboard - station manager
+  'מנהל אתר':   '🏗️',   // site manager
+  'עובד כללי':   '👷',    // worker
+  'עובד כללי לילה': '🦺', // night worker
+  'מחסנאי':      '📦',    // box - warehouse
+  'הנהלה':       '👔',    // tie - management
+  'נהג':         '🚗',    // car - driver
+  'אבטחה':       '🔐',    // security
+  'מנקה':        '🧹',    // broom - cleaner
+  'קצב':         '🔪',    // knife - butcher
+  'טבח מתמחה':   '📚',    // student cook
+  'סו-שף':       '⭐',    // sous chef
 };
-function roleEmoji(role) { return ROLE_EMOJIS[role] || '👤'; }
+function roleEmoji(role) {
+  if (ROLE_EMOJIS[role]) return ROLE_EMOJIS[role];
+  // Smart fallback based on keywords
+  const r = role.toLowerCase();
+  if (r.includes('לילה')) return '🌙';
+  if (r.includes('שף') || r.includes('chef')) return '🧑‍🍳';
+  if (r.includes('טבח')) return '🍳';
+  if (r.includes('קונדיטור') || r.includes('עוגה') || r.includes('מאפה')) return '🧁';
+  if (r.includes('חדר אוכל') || r.includes('הגשה') || r.includes('מלצר')) return '🍽️';
+  if (r.includes('שוטף') || r.includes('כלים')) return '🧼';
+  if (r.includes('מנהל') || r.includes('אחראי')) return '📋';
+  if (r.includes('מחסן') || r.includes('מלאי')) return '📦';
+  if (r.includes('נקיון') || r.includes('מנקה')) return '🧹';
+  if (r.includes('נהג')) return '🚗';
+  if (r.includes('אבטח')) return '🔐';
+  if (r.includes('קצב')) return '🔪';
+  return '👤';
+}
 
 // ─────────────────────────────────────────────
 // STATE & PERSISTENCE
@@ -531,8 +566,10 @@ function renderDashboard() {
     return { role, emoji:roleEmoji(role), avgActual, required, color: C.palette[i%C.palette.length] };
   }).filter(r => r.avgActual > 0 || r.required > 0);
 
-  // Set dynamic height: 52px per role row + padding
-  const roleChartH = Math.max(200, roleTotals.length * 52 + 60);
+  // Set dynamic height based on screen width
+  const isMobile = window.innerWidth <= 768;
+  const rowH = isMobile ? 62 : 52;
+  const roleChartH = Math.max(240, roleTotals.length * rowH + 80);
   const roleWrap = document.querySelector('.chart-roles-wrap');
   if (roleWrap) roleWrap.style.height = roleChartH + 'px';
 
