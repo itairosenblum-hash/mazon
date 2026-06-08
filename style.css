@@ -1070,3 +1070,43 @@ tr:hover td { background: var(--bg3); }
   min-height: 16px;
   transition: color 0.3s;
 }
+
+/* ══ DRILLDOWN MODAL ══ */
+.drilldown-overlay {
+  z-index: 998;
+}
+.drilldown-modal {
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.drilldown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+.drilldown-close {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: var(--radius-sm);
+  width: 32px; height: 32px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.drilldown-close:hover { border-color: var(--red); color: var(--red); }
+.drilldown-summary {
+  font-size: 0.82rem;
+  color: var(--text2);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  margin-top: 0.75rem;
+}
+#chartByStation { cursor: pointer; }
