@@ -1317,7 +1317,7 @@ tr:hover td { background: var(--bg3); }
 }
 
 @media (max-width: 768px) {
-  /* Make main-content a scroll container */
+  /* Make main-content a fixed scroll container */
   .main-content {
     position: fixed;
     top: var(--topbar-h);
@@ -1330,5 +1330,10 @@ tr:hover td { background: var(--bg3); }
   #page-dashboard .page-header {
     top: 0;
     padding: 0.6rem 1rem;
+    margin-bottom: 0;
+  }
+  /* Push summary cards below the sticky header */
+  #summaryCards {
+    margin-top: 130px;
   }
 }
