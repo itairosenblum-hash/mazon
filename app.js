@@ -330,17 +330,30 @@ function allowedStations() {
   return state.stations.filter(s => currentUser.stationIds.includes(s.id));
 }
 
-function entriesInPeriod(days) {
-  let entries;
+function getPeriodRange(days) {
+  // Returns {from, to} Date objects based on period and offset
+  const to = new Date();
+  to.setHours(23,59,59,999);
   if (days === 1) {
-    // Today only
-    const todayStr = today();
-    entries = state.entries.filter(e => e.date === todayStr);
+    to.setDate(to.getDate() + periodOffset);
+    const from = new Date(to);
+    from.setHours(0,0,0,0);
+    return { from, to };
   } else {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - days);
-    entries = state.entries.filter(e => new Date(e.date) >= cutoff);
+    to.setDate(to.getDate() + (periodOffset * days));
+    const from = new Date(to);
+    from.setDate(from.getDate() - (days - 1));
+    from.setHours(0,0,0,0);
+    return { from, to };
   }
+}
+
+function entriesInPeriod(days) {
+  const { from, to } = getPeriodRange(days);
+  let entries = state.entries.filter(e => {
+    const d = new Date(e.date);
+    return d >= from && d <= to;
+  });
   if (!isAdmin()) entries = entries.filter(e => currentUser.stationIds.includes(e.stationId));
   return entries;
 }
@@ -379,14 +392,8 @@ function renderDashboard() {
   const periodLabels = {1:'היום',7:'שבוע אחרון',30:'חודש אחרון',90:'רבעון אחרון',365:'שנה אחרונה'};
   document.getElementById('chartPeriodLabel').textContent = periodLabels[period] || period + ' ימים';
 
-  // Show date range
-  const toDate = new Date();
-  const fromDate = new Date();
-  if (period === 1) {
-    fromDate.setDate(fromDate.getDate());
-  } else {
-    fromDate.setDate(fromDate.getDate() - (period - 1));
-  }
+  // Show date range using getPeriodRange
+  const { from: fromDate, to: toDate } = getPeriodRange(period);
   const fmtShort = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
   const rangeEl = document.getElementById('dashboardDateRange');
   if (rangeEl) {
@@ -394,6 +401,9 @@ function renderDashboard() {
       ? fmtShort(toDate)
       : `${fmtShort(fromDate)} — ${fmtShort(toDate)}`;
   }
+  // Disable next button if already at current period
+  const nextBtn = document.getElementById('periodNext');
+  if (nextBtn) nextBtn.disabled = periodOffset >= 0;
   const entries = entriesInPeriod(period);
   const C = getChartColors();
   const visibleStations = isAdmin() ? state.stations : allowedStations();
@@ -513,10 +523,16 @@ function renderDashboard() {
     }
   });
 
-  // Build trend — for daily show last 30 days, otherwise show days in period
+  // Build trend using period range
   const trendDays = period === 1 ? 30 : period;
+  const trendTo = new Date(toDate);
+  const trendFrom = new Date(trendTo);
+  if (period === 1) { trendFrom.setDate(trendFrom.getDate() - 29); }
+  else { trendFrom.setTime(fromDate.getTime()); }
   const daysArr = [];
-  for (let i=trendDays-1;i>=0;i--) { const d=new Date(); d.setDate(d.getDate()-i); daysArr.push(d.toISOString().slice(0,10)); }
+  for (let d = new Date(trendFrom); d <= trendTo; d.setDate(d.getDate()+1)) {
+    daysArr.push(d.toISOString().slice(0,10));
+  }
   const trendData = daysArr.map(date=>({
     date,
     total: state.entries
@@ -651,7 +667,21 @@ document.getElementById('drilldownModal').addEventListener('click', e=>{
 });
 
 function destroyChart(chart) { if(chart){try{chart.destroy();}catch(e){}} }
-document.getElementById('dashboardPeriod').addEventListener('change', renderDashboard);
+document.getElementById('dashboardPeriod').addEventListener('change', () => {
+  periodOffset = 0; // reset offset when changing period type
+  renderDashboard();
+});
+
+// Period navigation
+let periodOffset = 0; // 0 = current, -1 = previous period, +1 = next period (future, capped at 0)
+
+document.getElementById('periodPrev').addEventListener('click', () => {
+  periodOffset--;
+  renderDashboard();
+});
+document.getElementById('periodNext').addEventListener('click', () => {
+  if (periodOffset < 0) { periodOffset++; renderDashboard(); }
+});
 
 // ─────────────────────────────────────────────
 // ENTRY PAGE
