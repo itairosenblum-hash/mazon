@@ -333,15 +333,6 @@ function navigate(page) {
   const link = document.querySelector(`[data-page="${page}"]`);
   if (link) link.classList.add('active');
   currentPage = page;
-  // Show mobile dash bar only on dashboard
-  const mdb = document.getElementById('mobileDashBar');
-  if (mdb) mdb.style.display = page === 'dashboard' ? 'flex' : 'none';
-  if (window.innerWidth <= 768) {
-    const mc = document.querySelector('.main-content');
-    if (mc) mc.style.paddingTop = page === 'dashboard'
-      ? 'calc(var(--topbar-h) + 46px + 0.75rem)'
-      : 'calc(var(--topbar-h) + 0.75rem)';
-  }
   renderPage(page);
 }
 
@@ -450,11 +441,8 @@ function renderDashboard() {
   const stationSel = document.getElementById('dashboardStation');
   if (stationSel) {
     const currentVal = stationSel.value;
-    const opts = '<option value="">כל התחנות</option>' +
+    stationSel.innerHTML = '<option value="">כל התחנות</option>' +
       allowedStations().map(s => `<option value="${s.id}"${s.id===currentVal?' selected':''}>${s.name}</option>`).join('');
-    stationSel.innerHTML = opts;
-    const mSt = document.getElementById('dashboardStationMobile');
-    if (mSt) { mSt.innerHTML = opts; mSt.value = currentVal; }
   }
   const selectedStationId = stationSel ? stationSel.value : '';
   // Filter by selected station
@@ -467,13 +455,14 @@ function renderDashboard() {
   // Show date range using getPeriodRange
   const { from: fromDate, to: toDate } = getPeriodRange(period);
   const fmtShort = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-  const rangeText = period === 1 ? fmtShort(toDate) : `${fmtShort(fromDate)} — ${fmtShort(toDate)}`;
-  ['dashboardDateRange','dashboardDateRangeMobile'].forEach(id=>{
-    const el=document.getElementById(id); if(el) el.textContent=rangeText;
-  });
-  ['periodNext'].forEach(id=>{
-    const btn=document.getElementById(id); if(btn) btn.disabled=periodOffset>=0;
-  });
+  const rangeEl = document.getElementById('dashboardDateRange');
+  if (rangeEl) {
+    rangeEl.textContent = period === 1
+      ? fmtShort(toDate)
+      : `${fmtShort(fromDate)} — ${fmtShort(toDate)}`;
+  }
+  const nextBtn = document.getElementById('periodNext');
+  if (nextBtn) nextBtn.disabled = periodOffset >= 0;
   const C = getChartColors();
   const visibleStations = selectedStationId
     ? allowedStations().filter(s => s.id === selectedStationId)
@@ -1316,21 +1305,6 @@ document.querySelectorAll('.bottom-nav-item').forEach(btn=>{
   });
 });
 
-
-// ─────────────────────────────────────────────
-// MOBILE DASHBOARD BAR HELPERS
-// ─────────────────────────────────────────────
-function syncMobilePeriod(sel) {
-  document.getElementById('dashboardPeriod').value = sel.value;
-  periodOffset = 0;
-  renderDashboard();
-}
-function syncMobileStation(sel) {
-  document.getElementById('dashboardStation').value = sel.value;
-  renderDashboard();
-}
-function mobileNavPrev() { periodOffset--; renderDashboard(); }
-function mobileNavNext() { if (periodOffset < 0) { periodOffset++; renderDashboard(); } }
 
 // ─────────────────────────────────────────────
 // INIT
