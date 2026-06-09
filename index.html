@@ -2,6 +2,9 @@
 <html lang="he" dir="rtl" data-theme="light">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>מעקב קבלן ים</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -366,25 +369,6 @@ function togglePasswordVisibility() {
   const btn = document.getElementById('eyeBtn');
   if (input.type === 'password') { input.type = 'text'; btn.textContent = '🙈'; }
   else { input.type = 'password'; btn.textContent = '👁'; }
-}
-</script>
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').then(reg => {
-      // Check for updates every time app loads
-      reg.update();
-      reg.addEventListener('updatefound', () => {
-        const newSW = reg.installing;
-        newSW.addEventListener('statechange', () => {
-          if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-            // New version available - reload automatically
-            window.location.reload();
-          }
-        });
-      });
-    });
-  });
 }
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
