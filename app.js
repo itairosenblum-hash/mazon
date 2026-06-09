@@ -1608,7 +1608,7 @@ function generatePDF() {
 
 const MSG_TEMPLATES = {
   reminder: `שלום {שם} 👋\n\nתזכורת חשובה: טרם ביצעת הזנת דוח נוכחות להיום.\n\nנא להיכנס למערכת ולעדכן את הנתונים בהקדם 🙏\nhttps://itairosenblum-hash.github.io/mazon/`,
-  credentials: `שלום {שם} 👋\n\nפרטי הכניסה שלך למערכת ניטור הנוכחות:\n\n🔐 שם משתמש: {username}\n🔑 סיסמה: {password}\n\n🌐 קישור לכניסה:\nhttps://itairosenblum-hash.github.io/mazon/\n\nלשאלות — פנה למנהל המערכת.`,
+  credentials: `שלום {שם} 👋\n\nפרטי הכניסה שלך למערכת מעקב קבלן זרוע הים:\n\n🔐 שם משתמש: {username}\n🔑 סיסמה: {password}\n\n🌐 קישור לכניסה:\nhttps://itairosenblum-hash.github.io/mazon/\n\nלשאלות — פנה למנהל המערכת.`,
   general: `שלום {שם} 👋\n\nהודעה ממנהל המערכת:\n\n`,
   clear: ``
 };
@@ -1705,21 +1705,63 @@ function updateMsgSummary() {
   el.innerHTML = `נבחרו <strong>${selected.length}</strong> מתוך ${total} משתמשים${noPhone ? ` · <span style="color:var(--orange)">${noPhone} ללא טלפון</span>` : ''}`;
 }
 
+// Mobile-friendly bulk WhatsApp: show a queue and open one at a time
+let _waQueue = [];
+let _waIndex = 0;
+
 function sendBulkWhatsapp() {
   const template = (document.getElementById('msgBody')||{}).value || '';
   if (!template.trim()) { alert('יש לכתוב הודעה לפני השליחה'); return; }
   const recipients = getSelectedRecipients();
   if (!recipients.length) { alert('יש לבחור לפחות נמען אחד'); return; }
 
-  const confirmed = confirm(`עומד לשלוח הודעה ל־${recipients.length} משתמשים.\nייפתחו ${recipients.length} חלונות וואטסאפ — ייתכן שהדפדפן יבקש אישור לחלונות קופצים.\n\nהמשך?`);
-  if (!confirmed) return;
+  _waQueue = recipients
+    .map(u => ({ name: u.name, phone: formatPhoneForWhatsapp(u.phone), msg: personalizeMsg(template, u) }))
+    .filter(r => r.phone);
 
-  recipients.forEach((u, i) => {
-    const phone = formatPhoneForWhatsapp(u.phone);
-    if (!phone) return;
-    const msg = personalizeMsg(template, u);
-    setTimeout(() => {
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
-    }, i * 600); // stagger 600ms apart to avoid popup blocker
-  });
+  if (!_waQueue.length) { alert('אין נמענים עם מספר טלפון תקין'); return; }
+
+  _waIndex = 0;
+  renderWaQueue();
+  document.getElementById('waQueueModal').style.display = 'flex';
+}
+
+function renderWaQueue() {
+  const total = _waQueue.length;
+  const current = _waQueue[_waIndex];
+  if (!current) { closeWaQueue(); return; }
+
+  document.getElementById('waQueueCounter').textContent = `${_waIndex + 1} מתוך ${total}`;
+  document.getElementById('waQueueName').textContent = current.name;
+  document.getElementById('waQueuePhone').textContent = current.phone;
+  document.getElementById('waQueuePreview').textContent = current.msg;
+  document.getElementById('waQueueProgress').style.width = `${((_waIndex) / total) * 100}%`;
+  document.getElementById('waQueueSkip').style.display = total > 1 ? 'inline-flex' : 'none';
+}
+
+function waQueueSend() {
+  const current = _waQueue[_waIndex];
+  if (!current) return;
+  window.open(`https://wa.me/${current.phone}?text=${encodeURIComponent(current.msg)}`, '_blank');
+  _waIndex++;
+  if (_waIndex >= _waQueue.length) {
+    closeWaQueue();
+    alert(`✅ נשלחו ${_waQueue.length} הודעות בהצלחה!`);
+  } else {
+    renderWaQueue();
+  }
+}
+
+function waQueueSkip() {
+  _waIndex++;
+  if (_waIndex >= _waQueue.length) {
+    closeWaQueue();
+  } else {
+    renderWaQueue();
+  }
+}
+
+function closeWaQueue() {
+  document.getElementById('waQueueModal').style.display = 'none';
+  _waQueue = []; _waIndex = 0;
 }
