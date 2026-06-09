@@ -1374,11 +1374,12 @@ function stepRole(btn, delta) {
 // REPORTS PAGE
 // ─────────────────────────────────────────────
 function renderReports() {
-  // Populate station dropdown
+  // Populate station dropdown - always refresh
   const sel = document.getElementById('reportStation');
   if (!sel) return;
+  const stations = (state && state.stations) ? state.stations : [];
   sel.innerHTML = '<option value="">כל התחנות</option>' +
-    state.stations.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    stations.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 
   // Custom date range toggle
   const periodSel = document.getElementById('reportPeriod');
@@ -1423,8 +1424,11 @@ function getReportDateRange() {
 }
 
 function generatePDF() {
-  const { jsPDF } = window.jspdf;
-  if (!jsPDF) { alert('טעינת ספריית PDF נכשלה. נסה לרענן.'); return; }
+  try {
+  const jsPDFLib = window.jspdf || window.jsPDF;
+  const jsPDF = jsPDFLib ? (jsPDFLib.jsPDF || jsPDFLib) : null;
+  if (!jsPDF) { alert('טעינת ספריית PDF נכשלה. נסה לרענן את הדף.'); return; }
+  if (!state || !state.stations) { alert('אין נתונים להפקת דוח.'); return; }
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const reportType = document.getElementById('reportType')?.value || 'summary';
@@ -1668,4 +1672,8 @@ function generatePDF() {
   const periodLabel = document.getElementById('reportPeriod')?.selectedOptions[0]?.text || 'report';
   const stationLabel = stationFilter ? (getStation(stationFilter)?.name || '') : 'all';
   doc.save(`catering-report-${stationLabel}-${fromStr.replace(/\//g,'-')}.pdf`);
+  } catch(err) {
+    console.error('PDF generation error:', err);
+    alert('שגיאה בהפקת הדוח: ' + err.message);
+  }
 }
