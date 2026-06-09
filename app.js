@@ -1610,7 +1610,6 @@ const MSG_TEMPLATES = {
   reminder: `שלום {שם} 👋\n\nתזכורת חשובה: טרם ביצעת הזנת דוח נוכחות להיום.\n\nנא להיכנס למערכת ולעדכן את הנתונים בהקדם 🙏\nhttps://itairosenblum-hash.github.io/mazon/`,
   credentials: `שלום {שם} 👋\n\nפרטי הכניסה שלך למערכת ניטור הנוכחות:\n\n🔐 שם משתמש: {username}\n🔑 סיסמה: {password}\n\n🌐 קישור לכניסה:\nhttps://itairosenblum-hash.github.io/mazon/\n\nלשאלות — פנה למנהל המערכת.`,
   general: `שלום {שם} 👋\n\nהודעה ממנהל המערכת:\n\n`,
-  shift: `שלום {שם} 👋\n\nשינוי משמרת:\n\n📅 תאריך: \n⏰ שעה: \n🏪 תחנה: \n\nנא לאשר קבלת הודעה זו.`,
   clear: ``
 };
 
