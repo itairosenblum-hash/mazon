@@ -8,6 +8,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>מעקב קבלן ים</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 
@@ -108,6 +110,7 @@
       <li><a href="#" class="nav-link" data-page="entry"><span class="nav-icon">✏️</span> הזנת נוכחות</a></li>
       <li><a href="#" class="nav-link" data-page="history"><span class="nav-icon">📋</span> היסטוריה</a></li>
       <li data-admin-only><a href="#" class="nav-link" data-page="stations"><span class="nav-icon">🏪</span> ניהול תחנות</a></li>
+      <li data-admin-only><a href="#" class="nav-link" data-page="reports"><span class="nav-icon">📄</span> דוחות PDF</a></li>
       <li data-admin-only><a href="#" class="nav-link" data-page="users"><span class="nav-icon">👥</span> ניהול משתמשים</a></li>
       <li data-admin-only><a href="#" class="nav-link" data-page="settings"><span class="nav-icon">⚙️</span> הגדרות</a></li>
     </ul>
@@ -128,6 +131,7 @@
     <button class="bottom-nav-item" data-page="entry"><span class="bn-icon">✏️</span>נוכחות</button>
     <button class="bottom-nav-item" data-page="history"><span class="bn-icon">📋</span>היסטוריה</button>
     <button class="bottom-nav-item admin-nav-item" data-page="users"><span class="bn-icon">👥</span>משתמשים</button>
+    <button class="bottom-nav-item admin-nav-item" data-page="reports"><span class="bn-icon">📄</span>דוחות</button>
     <button class="bottom-nav-item" onclick="logout()"><span class="bn-icon">🚪</span>יציאה</button>
   </nav>
   <button class="btn-logout-mobile" id="logoutBtnMobile" style="display:none">יציאה</button>
@@ -359,6 +363,64 @@
       </div>
     </div>
 
+
+    <!-- REPORTS PAGE (Admin only) -->
+    <section class="page" id="page-reports">
+      <div class="page-header">
+        <h2 class="page-title"><span class="page-icon">📄</span> דוחות PDF</h2>
+      </div>
+
+      <div class="reports-card">
+        <div class="reports-section-title">⚙️ הגדרות דוח</div>
+
+        <div class="form-group">
+          <label>תקופה</label>
+          <select id="reportPeriod" class="period-select">
+            <option value="today">היום</option>
+            <option value="week">שבוע אחרון</option>
+            <option value="month" selected>חודש אחרון</option>
+            <option value="quarter">רבעון אחרון</option>
+            <option value="custom">טווח מותאם</option>
+          </select>
+        </div>
+
+        <div id="reportCustomRange" style="display:none;gap:12px;display:none">
+          <div class="form-group">
+            <label>מתאריך</label>
+            <input type="date" id="reportFrom" class="period-select" />
+          </div>
+          <div class="form-group">
+            <label>עד תאריך</label>
+            <input type="date" id="reportTo" class="period-select" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>תחנה</label>
+          <select id="reportStation" class="period-select">
+            <option value="">כל התחנות</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>סוג דוח</label>
+          <select id="reportType" class="period-select">
+            <option value="summary">סיכום לפי תחנה</option>
+            <option value="daily">פירוט יומי</option>
+            <option value="roles">פירוט לפי תפקיד</option>
+          </select>
+        </div>
+
+        <button class="btn-save" id="generateReportBtn" onclick="generatePDF()" style="width:100%;margin-top:1rem">
+          📥 הפק דוח PDF
+        </button>
+      </div>
+
+      <div class="reports-card" id="reportPreview" style="display:none">
+        <div class="reports-section-title">👁 תצוגה מקדימה</div>
+        <div id="reportPreviewContent"></div>
+      </div>
+    </section>
   </main>
 </div>
 </div><!-- /appShell -->
