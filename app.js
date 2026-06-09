@@ -177,6 +177,17 @@ function saveState() {
   scheduleSave();
 }
 
+function defaultState() {
+  return {
+    roles: ['מנהל משמרת', 'טבח', 'עוזר טבח', 'מלצר', 'שוטף כלים'],
+    stations: [],
+    entries: [],
+    users: [
+      { id: 'u0', username: 'admin', password: 'admin123', role: 'admin', name: 'מנהל ראשי', stationIds: [], phone: '' }
+    ]
+  };
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
