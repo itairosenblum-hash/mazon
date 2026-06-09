@@ -10,6 +10,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script>
+    // Ensure jsPDF is accessible globally after CDN load
+    window.addEventListener('load', function() {
+      if (window.jspdf && !window.jsPDF) window.jsPDF = window.jspdf.jsPDF;
+    });
+  </script>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 
