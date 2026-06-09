@@ -369,6 +369,7 @@ function renderPage(page) {
   if (page === 'settings')  renderSettings();
   if (page === 'users')     renderUsers();
   if (page === 'reports')   renderReports();
+  if (page === 'messages')  renderMessages();
 }
 
 // ─────────────────────────────────────────────
@@ -1600,3 +1601,126 @@ function generatePDF() {
   }
 }
 
+
+// ─────────────────────────────────────────────
+// MESSAGES PAGE (Admin only)
+// ─────────────────────────────────────────────
+
+const MSG_TEMPLATES = {
+  reminder: `שלום {שם} 👋\n\nתזכורת חשובה: טרם ביצעת הזנת דוח נוכחות להיום.\n\nנא להיכנס למערכת ולעדכן את הנתונים בהקדם 🙏\nhttps://itairosenblum-hash.github.io/mazon/`,
+  credentials: `שלום {שם} 👋\n\nפרטי הכניסה שלך למערכת ניטור הנוכחות:\n\n🔐 שם משתמש: {username}\n🔑 סיסמה: {password}\n\n🌐 קישור לכניסה:\nhttps://itairosenblum-hash.github.io/mazon/\n\nלשאלות — פנה למנהל המערכת.`,
+  general: `שלום {שם} 👋\n\nהודעה ממנהל המערכת:\n\n`,
+  shift: `שלום {שם} 👋\n\nשינוי משמרת:\n\n📅 תאריך: \n⏰ שעה: \n🏪 תחנה: \n\nנא לאשר קבלת הודעה זו.`,
+  clear: ``
+};
+
+function renderMessages() {
+  renderMsgRecipients();
+  updateMsgSummary();
+
+  // Live preview on textarea input
+  const ta = document.getElementById('msgBody');
+  if (ta && !ta._msgListenerAdded) {
+    ta.addEventListener('input', updateMsgPreview);
+    ta._msgListenerAdded = true;
+  }
+  updateMsgPreview();
+}
+
+function applyTemplate(key) {
+  const ta = document.getElementById('msgBody');
+  if (!ta) return;
+  ta.value = MSG_TEMPLATES[key] || '';
+  updateMsgPreview();
+  ta.focus();
+}
+
+function updateMsgPreview() {
+  const ta = document.getElementById('msgBody');
+  const box = document.getElementById('msgPreviewBox');
+  const pre = document.getElementById('msgPreviewText');
+  if (!ta || !box || !pre) return;
+  const text = ta.value.trim();
+  if (!text) { box.style.display = 'none'; return; }
+  // Sample with first selected user
+  const selected = getSelectedRecipients();
+  const sample = selected.length ? selected[0] : { name: 'ישראל', username: 'israel', password: '****' };
+  box.style.display = 'block';
+  pre.textContent = personalizeMsg(text, sample);
+}
+
+function personalizeMsg(template, user) {
+  return template
+    .replace(/\{שם\}/g, user.name || '')
+    .replace(/\{username\}/g, user.username || '')
+    .replace(/\{password\}/g, user.password || '****');
+}
+
+function renderMsgRecipients() {
+  const container = document.getElementById('msgRecipientsList');
+  if (!container) return;
+  const nonAdmins = state.users.filter(u => u.role !== 'admin');
+  container.innerHTML = nonAdmins.map(u => {
+    const hasPhone = !!u.phone;
+    const stationNames = (u.stationIds||[]).map(sid => {
+      const s = getStation(sid); return s ? s.name : '';
+    }).filter(Boolean).join(', ') || 'ללא תחנה';
+    return `<label class="msg-recipient-row ${!hasPhone ? 'no-phone' : ''}" title="${!hasPhone ? 'אין מספר טלפון' : u.phone}">
+      <input type="checkbox" class="msg-recipient-cb" value="${u.id}" ${hasPhone ? 'checked' : 'disabled'} />
+      <div class="msg-recipient-avatar">${u.name[0]}</div>
+      <div class="msg-recipient-info">
+        <div class="msg-recipient-name">${u.name}</div>
+        <div class="msg-recipient-sub">${stationNames} ${hasPhone ? '· 📱 '+u.phone : '· <span style="color:var(--orange)">⚠️ ללא טלפון</span>'}</div>
+      </div>
+    </label>`;
+  }).join('') || '<div style="color:var(--text3);text-align:center;padding:20px">אין משתמשים</div>';
+
+  // Attach change listeners for summary update
+  container.querySelectorAll('.msg-recipient-cb').forEach(cb => {
+    cb.addEventListener('change', () => { updateMsgSummary(); updateMsgPreview(); });
+  });
+}
+
+function selectAllRecipients(val) {
+  document.querySelectorAll('.msg-recipient-cb:not(:disabled)').forEach(cb => cb.checked = val);
+  updateMsgSummary(); updateMsgPreview();
+}
+
+function selectNoPhone() {
+  // Highlight users without phone — can't select them (disabled)
+  alert('משתמשים ללא מספר טלפון אינם ניתנים לבחירה.\nעדכן את הטלפון שלהם בעמוד ניהול משתמשים.');
+}
+
+function getSelectedRecipients() {
+  return [...document.querySelectorAll('.msg-recipient-cb:checked')]
+    .map(cb => state.users.find(u => u.id === cb.value))
+    .filter(Boolean);
+}
+
+function updateMsgSummary() {
+  const el = document.getElementById('msgSummary');
+  if (!el) return;
+  const selected = getSelectedRecipients();
+  const total = state.users.filter(u => u.role !== 'admin').length;
+  const noPhone = state.users.filter(u => u.role !== 'admin' && !u.phone).length;
+  el.innerHTML = `נבחרו <strong>${selected.length}</strong> מתוך ${total} משתמשים${noPhone ? ` · <span style="color:var(--orange)">${noPhone} ללא טלפון</span>` : ''}`;
+}
+
+function sendBulkWhatsapp() {
+  const template = (document.getElementById('msgBody')||{}).value || '';
+  if (!template.trim()) { alert('יש לכתוב הודעה לפני השליחה'); return; }
+  const recipients = getSelectedRecipients();
+  if (!recipients.length) { alert('יש לבחור לפחות נמען אחד'); return; }
+
+  const confirmed = confirm(`עומד לשלוח הודעה ל־${recipients.length} משתמשים.\nייפתחו ${recipients.length} חלונות וואטסאפ — ייתכן שהדפדפן יבקש אישור לחלונות קופצים.\n\nהמשך?`);
+  if (!confirmed) return;
+
+  recipients.forEach((u, i) => {
+    const phone = formatPhoneForWhatsapp(u.phone);
+    if (!phone) return;
+    const msg = personalizeMsg(template, u);
+    setTimeout(() => {
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    }, i * 600); // stagger 600ms apart to avoid popup blocker
+  });
+}
