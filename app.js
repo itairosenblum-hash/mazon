@@ -1319,9 +1319,9 @@ document.getElementById('importFile').addEventListener('change',e=>{
   reader.readAsText(file); e.target.value='';
 });
 document.getElementById('btnReset').addEventListener('click',()=>{
-  if(!confirm('למחוק את כל הנתונים?')) return;
-  if(!confirm('בטוח?')) return;
-  state=defaultState(); saveState(); renderPage(currentPage); alert('נמחק.');
+  if(!confirm('למחוק את כל ההזנות? משתמשים, תחנות ותקנים לא יימחקו.')) return;
+  if(!confirm('בטוח? פעולה זו אינה הפיכה.')) return;
+  state.entries = []; saveState(); renderPage(currentPage); alert('ההזנות נמחקו.');
 });
 
 // ─────────────────────────────────────────────
