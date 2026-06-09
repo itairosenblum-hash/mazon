@@ -324,7 +324,7 @@ let currentPage = 'dashboard';
 let editingStationId = null;
 
 function navigate(page) {
-  if (!isAdmin() && ['stations','settings','users'].includes(page)) {
+  if (!isAdmin() && ['stations','settings','users','reports'].includes(page)) {
     page = 'dashboard';
   }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -368,6 +368,7 @@ function renderPage(page) {
   if (page === 'stations')  renderStations();
   if (page === 'settings')  renderSettings();
   if (page === 'users')     renderUsers();
+  if (page === 'reports')   renderReports();
 }
 
 // ─────────────────────────────────────────────
