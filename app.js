@@ -1,3 +1,13 @@
+// Global error handler - ensures splash never stays forever
+window.onerror = function(msg, src, line, col, err) {
+  var s = document.getElementById('loadingSplash');
+  if (s) s.style.display = 'none';
+  var ls = document.getElementById('loginScreen');
+  if (ls) ls.style.display = 'flex';
+  console.error('App error:', msg, 'line:', line);
+  return false;
+};
+
 // ─────────────────────────────────────────────
 // THEME
 // ─────────────────────────────────────────────
@@ -1394,6 +1404,15 @@ function tbNext() { if (periodOffset < 0) { periodOffset++; renderDashboard(); }
 // ─────────────────────────────────────────────
 // Show app immediately from localStorage — no waiting for network
 let state = loadState();
+// Failsafe: if something crashes, hide splash after 5s anyway
+setTimeout(function() {
+  var s = document.getElementById('loadingSplash');
+  if (s && s.style.display !== 'none') {
+    s.style.display = 'none';
+    var ls = document.getElementById('loginScreen');
+    if (ls) ls.style.display = 'flex';
+  }
+}, 5000);
 loadSession();
 if (currentUser) { showAppShell(); navigate('dashboard'); }
 else showLoginScreen();
