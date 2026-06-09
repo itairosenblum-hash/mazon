@@ -1352,7 +1352,9 @@ function tbNext() { if (periodOffset < 0) { periodOffset++; renderDashboard(); }
 // ─────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────
-// Load from Google Sheets first, then init
+// Initialize state from localStorage immediately (sync), then refresh from Sheets
+let state = loadState();
+
 (async () => {
   await loadFromSheets();
   loadSession();
