@@ -449,6 +449,16 @@ let chartStation=null, chartRole=null, chartTrend=null;
 function renderDashboard() {
   const period = parseInt(document.getElementById('dashboardPeriod').value) || 30;
 
+  // Ensure mobile topbar rows are visible on dashboard
+  ['tbDashRow','tbNavRow'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'flex';
+  });
+  if (window.innerWidth <= 768) {
+    const mc = document.querySelector('.main-content');
+    if (mc) mc.style.paddingTop = 'calc(var(--topbar-h) + 84px + 0.5rem)';
+  }
+
   // Populate station filter dropdown
   const stationSel = document.getElementById('dashboardStation');
   if (stationSel) {
