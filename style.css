@@ -1414,3 +1414,56 @@ tr:hover td { background: var(--bg3); }
   padding-right: 4px;
 }
 
+
+/* ══ ROLE STEPPER ══ */
+.role-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stepper-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.stepper-btn:active {
+  transform: scale(0.9);
+}
+.stepper-plus {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.stepper-minus {
+  background: var(--bg4);
+  border-color: var(--border);
+}
+.role-count-input {
+  width: 56px;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg2);
+  color: var(--text);
+  padding: 6px 4px;
+  -moz-appearance: textfield;
+}
+.role-count-input::-webkit-outer-spin-button,
+.role-count-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
