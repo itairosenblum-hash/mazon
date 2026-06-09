@@ -985,7 +985,11 @@ function renderRoleInputs() {
         <span class="role-emoji">${roleEmoji(role)}</span>
         <div><div class="role-name">${role}</div>${min>0?`<div class="role-required">נדרש: ${min}</div>`:''}</div>
       </div>
-      <input class="role-count-input" type="number" min="0" max="99" value="${val}" placeholder="0" data-role="${role}" />
+      <div class="role-stepper">
+        <button type="button" class="stepper-btn stepper-minus" onclick="stepRole(this,-1)">−</button>
+        <input class="role-count-input" type="number" min="0" max="99" value="${val}" placeholder="0" data-role="${role}" />
+        <button type="button" class="stepper-btn stepper-plus" onclick="stepRole(this,1)">+</button>
+      </div>
     </div>`;
   }).join('') + `
   <div class="entry-note-wrap">
@@ -1354,3 +1358,10 @@ function tbNext() { if (periodOffset < 0) { periodOffset++; renderDashboard(); }
   if (currentUser) { showAppShell(); navigate('dashboard'); }
   else showLoginScreen();
 })();
+
+function stepRole(btn, delta) {
+  const input = btn.parentElement.querySelector('.role-count-input');
+  const val = Math.max(0, Math.min(99, (parseInt(input.value) || 0) + delta));
+  input.value = val;
+  input.dispatchEvent(new Event('input'));
+}
