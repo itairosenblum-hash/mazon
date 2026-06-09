@@ -1028,7 +1028,11 @@ function showMsg(id,msg,color='#52c07a') {
 }
 
 function renderRecentEntries() {
-  const sorted=[...state.entries].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
+  const allowed = allowedStations().map(s => s.id);
+  const filtered = isAdmin()
+    ? state.entries
+    : state.entries.filter(e => allowed.includes(e.stationId));
+  const sorted = [...filtered].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
   const container=document.getElementById('recentEntries');
   if(!sorted.length){container.innerHTML='<div class="empty-state"><span class="emoji">📭</span>אין הזנות עדיין</div>';return;}
   container.innerHTML=sorted.map(e=>{
