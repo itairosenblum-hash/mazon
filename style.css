@@ -188,11 +188,45 @@ body::before {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 1rem;
+  padding: 6px 0.9rem 4px;
   border-top: 1px solid var(--border);
   background: var(--bg2);
   width: 100%;
-  flex-wrap: nowrap;
+}
+.tb-row3 {
+  display: flex;
+  align-items: center;
+  padding: 4px 0.9rem 6px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  width: 100%;
+}
+.tb-row3 .tb-nav-btn {
+  width: 40px;
+  height: 34px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  color: var(--text);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.tb-row3 .tb-nav-btn:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  border-left: none;
+}
+.tb-row3 .tb-date {
+  flex: 1;
+  text-align: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text);
+  background: var(--bg3);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  height: 34px;
+  line-height: 34px;
+  padding: 0 8px;
 }
 .tb-sel {
   flex: 1;
