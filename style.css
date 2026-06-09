@@ -176,7 +176,7 @@ body::before {
   flex-direction: column;
   padding: 0;
 }
-.topbar-row1 {
+.tb-row1 {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -184,7 +184,7 @@ body::before {
   height: var(--topbar-h);
   width: 100%;
 }
-.topbar-row2 {
+.tb-row2 {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -194,6 +194,53 @@ body::before {
   width: 100%;
   flex-wrap: nowrap;
 }
+.tb-sel {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 6px 6px;
+  font-size: 0.78rem;
+  font-family: 'Heebo', sans-serif;
+  height: 34px;
+}
+.tb-nav {
+  flex: 1.4;
+  display: flex;
+  align-items: center;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  height: 34px;
+}
+.tb-nav-btn {
+  width: 34px;
+  height: 34px;
+  background: none;
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text);
+  font-size: 1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.tb-nav-btn:last-child { border-right: none; border-left: 1px solid var(--border); }
+.tb-nav-btn:disabled { opacity: 0.25; }
+.tb-date {
+  flex: 1;
+  text-align: center;
+  font-size: 0.65rem;
+  font-family: 'Space Mono', monospace;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
 
 
 
