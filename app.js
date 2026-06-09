@@ -335,12 +335,14 @@ function navigate(page) {
   currentPage = page;
   // Mobile: show dashboard controls row in topbar
   const tbDashRow = document.getElementById('tbDashRow');
+  const tbNavRow = document.getElementById('tbNavRow');
   if (tbDashRow) tbDashRow.style.display = page === 'dashboard' ? 'flex' : 'none';
+  if (tbNavRow) tbNavRow.style.display = page === 'dashboard' ? 'flex' : 'none';
   // Adjust main-content top padding
   if (window.innerWidth <= 768) {
     const mc = document.querySelector('.main-content');
     if (mc) mc.style.paddingTop = page === 'dashboard'
-      ? 'calc(var(--topbar-h) + 42px + 0.75rem)'
+      ? 'calc(var(--topbar-h) + 84px + 0.75rem)'
       : 'calc(var(--topbar-h) + 0.75rem)';
   }
   renderPage(page);
