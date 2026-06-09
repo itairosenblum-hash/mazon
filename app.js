@@ -1365,3 +1365,304 @@ function stepRole(btn, delta) {
   input.value = val;
   input.dispatchEvent(new Event('input'));
 }
+
+
+// ─────────────────────────────────────────────
+// REPORTS PAGE
+// ─────────────────────────────────────────────
+function renderReports() {
+  // Populate station dropdown
+  const sel = document.getElementById('reportStation');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">כל התחנות</option>' +
+    state.stations.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+  // Custom date range toggle
+  const periodSel = document.getElementById('reportPeriod');
+  const customRange = document.getElementById('reportCustomRange');
+  if (periodSel) {
+    periodSel.onchange = () => {
+      if (customRange) customRange.style.display = periodSel.value === 'custom' ? 'flex' : 'none';
+    };
+  }
+
+  // Set default dates
+  const today = new Date();
+  const fromDate = new Date(today); fromDate.setDate(today.getDate() - 30);
+  const fromEl = document.getElementById('reportFrom');
+  const toEl = document.getElementById('reportTo');
+  if (fromEl) fromEl.value = fromDate.toISOString().split('T')[0];
+  if (toEl) toEl.value = today.toISOString().split('T')[0];
+}
+
+function getReportDateRange() {
+  const period = document.getElementById('reportPeriod')?.value || 'month';
+  const today = new Date();
+  today.setHours(23,59,59,999);
+  let from = new Date();
+  from.setHours(0,0,0,0);
+
+  if (period === 'today') {
+    // from = today
+  } else if (period === 'week') {
+    from.setDate(from.getDate() - 7);
+  } else if (period === 'month') {
+    from.setDate(from.getDate() - 30);
+  } else if (period === 'quarter') {
+    from.setDate(from.getDate() - 90);
+  } else if (period === 'custom') {
+    const f = document.getElementById('reportFrom')?.value;
+    const t = document.getElementById('reportTo')?.value;
+    if (f) from = new Date(f);
+    if (t) { today.setTime(new Date(t).getTime()); today.setHours(23,59,59,999); }
+  }
+  return { from, to: today };
+}
+
+function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) { alert('טעינת ספריית PDF נכשלה. נסה לרענן.'); return; }
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const reportType = document.getElementById('reportType')?.value || 'summary';
+  const stationFilter = document.getElementById('reportStation')?.value || '';
+  const { from, to } = getReportDateRange();
+
+  const fromStr = from.toLocaleDateString('he-IL');
+  const toStr = to.toLocaleDateString('he-IL');
+
+  // Filter entries by date range
+  let entries = state.entries.filter(e => {
+    const d = new Date(e.date);
+    return d >= from && d <= to;
+  });
+  if (stationFilter) entries = entries.filter(e => e.stationId === stationFilter);
+
+  const stations = stationFilter
+    ? state.stations.filter(s => s.id === stationFilter)
+    : state.stations;
+
+  // ── HEADER ──
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(40, 40, 40);
+  doc.text('Catering Report', 105, 18, { align: 'center' });
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  doc.text('\u05de\u05e2\u05e7\u05d1 \u05e7\u05d1\u05dc\u05df \u05d9\u05dd', 105, 26, { align: 'center' });
+  doc.text(`${fromStr} - ${toStr}`, 105, 33, { align: 'center' });
+
+  // Accent line
+  doc.setDrawColor(232, 197, 71);
+  doc.setLineWidth(1.2);
+  doc.line(15, 37, 195, 37);
+
+  let yPos = 45;
+
+  if (reportType === 'summary') {
+    // ── SUMMARY TABLE PER STATION ──
+    const tableData = stations.map(station => {
+      const stEntries = entries.filter(e => e.stationId === station.id);
+      const days = [...new Set(stEntries.map(e => e.date))].length;
+      const totalActual = stEntries.reduce((sum, e) => sum + Object.values(e.counts || {}).reduce((a,b)=>a+b,0), 0);
+      const avgActual = days > 0 ? (totalActual / days).toFixed(1) : '0';
+
+      // Calculate required totals
+      const minStaff = station.minStaff || {};
+      const totalRequired = Object.values(minStaff).reduce((a,b)=>a+b,0);
+
+      // Per-role gap
+      const roleGaps = state.roles.map(role => {
+        const req = (minStaff[role] || 0);
+        if (req === 0) return null;
+        const roleEntries = stEntries.filter(e => (e.counts[role] || 0) > 0);
+        const avgActualRole = days > 0
+          ? stEntries.reduce((s,e) => s + (e.counts[role]||0), 0) / days
+          : 0;
+        const gap = avgActualRole - req;
+        return `${role}: ${avgActualRole.toFixed(1)}/${req} (${gap >= 0 ? '+' : ''}${gap.toFixed(1)})`;
+      }).filter(Boolean).join(', ');
+
+      const avgGap = totalRequired > 0 ? ((totalActual / Math.max(days,1)) - totalRequired) : 0;
+      const gapStr = avgGap >= 0 ? `+${avgGap.toFixed(1)}` : avgGap.toFixed(1);
+
+      return [
+        station.name,
+        String(days),
+        String(totalRequired || '-'),
+        avgActual,
+        gapStr,
+        avgGap < 0 ? 'חסר' : avgGap === 0 ? 'מדויק' : 'עודף'
+      ];
+    });
+
+    doc.autoTable({
+      startY: yPos,
+      head: [['תחנה', 'ימים', 'נדרש/יום', 'בפועל/יום', 'פער', 'סטטוס']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [232, 197, 71],
+        textColor: [40, 40, 40],
+        fontStyle: 'bold',
+        fontSize: 10,
+        halign: 'center'
+      },
+      bodyStyles: { fontSize: 9, halign: 'center' },
+      columnStyles: {
+        0: { halign: 'right' },
+        4: {
+          fontStyle: 'bold',
+          textColor: (cell) => cell.raw < 0 ? [200,50,50] : [50,160,100]
+        },
+        5: { fontStyle: 'bold' }
+      },
+      didParseCell(data) {
+        if (data.section === 'body' && data.column.index === 5) {
+          const val = data.cell.raw;
+          if (val === 'חסר') data.cell.styles.textColor = [200, 50, 50];
+          else if (val === 'עודף') data.cell.styles.textColor = [50, 130, 220];
+          else data.cell.styles.textColor = [50, 160, 100];
+        }
+        if (data.section === 'body' && data.column.index === 4) {
+          const val = parseFloat(data.cell.raw);
+          if (!isNaN(val)) {
+            data.cell.styles.textColor = val < 0 ? [200, 50, 50] : val > 0 ? [50, 130, 220] : [50, 160, 100];
+          }
+        }
+      },
+      margin: { right: 15, left: 15 }
+    });
+
+    yPos = doc.lastAutoTable.finalY + 10;
+
+    // ── PER-STATION ROLE BREAKDOWN ──
+    stations.forEach(station => {
+      if (yPos > 260) { doc.addPage(); yPos = 20; }
+      const stEntries = entries.filter(e => e.stationId === station.id);
+      const days = [...new Set(stEntries.map(e => e.date))].length || 1;
+      const minStaff = station.minStaff || {};
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text(station.name, 195, yPos, { align: 'right' });
+      yPos += 6;
+
+      const roleData = state.roles.map(role => {
+        const req = minStaff[role] || 0;
+        const total = stEntries.reduce((s,e) => s + (e.counts[role]||0), 0);
+        const avg = (total / days).toFixed(1);
+        const gap = (parseFloat(avg) - req);
+        return [role, String(req || '-'), avg, gap >= 0 ? `+${gap.toFixed(1)}` : gap.toFixed(1), req === 0 ? '—' : gap < 0 ? 'חסר' : gap === 0 ? 'מדויק' : 'עודף'];
+      }).filter(r => r[1] !== '-' || parseFloat(r[2]) > 0);
+
+      if (roleData.length === 0) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(150,150,150);
+        doc.text('אין נתונים לתחנה זו בתקופה הנבחרת', 195, yPos, { align: 'right' });
+        yPos += 8;
+        return;
+      }
+
+      doc.autoTable({
+        startY: yPos,
+        head: [['תפקיד', 'נדרש', 'בפועל (ממוצע)', 'פער', 'סטטוס']],
+        body: roleData,
+        theme: 'striped',
+        headStyles: { fillColor: [245, 235, 200], textColor: [80,60,20], fontSize: 9, halign: 'center' },
+        bodyStyles: { fontSize: 8.5, halign: 'center' },
+        columnStyles: { 0: { halign: 'right' } },
+        didParseCell(data) {
+          if (data.section === 'body' && data.column.index === 4) {
+            const val = data.cell.raw;
+            if (val === 'חסר') data.cell.styles.textColor = [200, 50, 50];
+            else if (val === 'עודף') data.cell.styles.textColor = [50, 130, 220];
+            else if (val === 'מדויק') data.cell.styles.textColor = [50, 160, 100];
+          }
+          if (data.section === 'body' && data.column.index === 3) {
+            const val = parseFloat(data.cell.raw);
+            if (!isNaN(val)) {
+              data.cell.styles.textColor = val < 0 ? [200, 50, 50] : val > 0 ? [50, 130, 220] : [50, 160, 100];
+            }
+          }
+        },
+        margin: { right: 15, left: 15 }
+      });
+      yPos = doc.lastAutoTable.finalY + 8;
+    });
+
+  } else if (reportType === 'daily') {
+    // ── DAILY BREAKDOWN ──
+    const allDates = [...new Set(entries.map(e => e.date))].sort();
+    const tableData = allDates.map(date => {
+      const dayEntries = entries.filter(e => e.date === date);
+      const total = dayEntries.reduce((s,e) => s + Object.values(e.counts||{}).reduce((a,b)=>a+b,0), 0);
+      const stationNames = dayEntries.map(e => {
+        const st = getStation(e.stationId);
+        return st ? st.name : '';
+      }).filter(Boolean).join(', ');
+      return [new Date(date).toLocaleDateString('he-IL'), String(dayEntries.length), String(total), stationNames];
+    });
+
+    doc.autoTable({
+      startY: yPos,
+      head: [['תאריך', 'תחנות פעילות', 'סה"כ עובדים', 'תחנות']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [232, 197, 71], textColor: [40,40,40], fontStyle: 'bold', fontSize: 10, halign: 'center' },
+      bodyStyles: { fontSize: 9, halign: 'center' },
+      columnStyles: { 0: { halign: 'right' }, 3: { halign: 'right', fontSize: 7 } },
+      margin: { right: 15, left: 15 }
+    });
+
+  } else if (reportType === 'roles') {
+    // ── ROLES BREAKDOWN ──
+    const tableData = state.roles.map(role => {
+      const total = entries.reduce((s,e) => s + (e.counts[role]||0), 0);
+      const days = [...new Set(entries.map(e=>e.date))].length || 1;
+      const avg = (total/days).toFixed(1);
+      const stationsWithRole = stations.filter(s => (s.minStaff||{})[role] > 0);
+      const totalReq = stationsWithRole.reduce((s,st) => s + ((st.minStaff||{})[role]||0), 0);
+      const gap = ((total/days) - totalReq);
+      return [role, String(total), avg, String(totalReq || '-'), gap >= 0 ? `+${gap.toFixed(1)}` : gap.toFixed(1)];
+    }).filter(r => parseInt(r[1]) > 0 || r[3] !== '-');
+
+    doc.autoTable({
+      startY: yPos,
+      head: [['תפקיד', 'סה"כ', 'ממוצע/יום', 'נדרש/יום', 'פער']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [232, 197, 71], textColor: [40,40,40], fontStyle: 'bold', fontSize: 10, halign: 'center' },
+      bodyStyles: { fontSize: 9, halign: 'center' },
+      columnStyles: { 0: { halign: 'right' } },
+      didParseCell(data) {
+        if (data.section === 'body' && data.column.index === 4) {
+          const val = parseFloat(data.cell.raw);
+          if (!isNaN(val)) {
+            data.cell.styles.textColor = val < 0 ? [200, 50, 50] : val > 0 ? [50, 130, 220] : [50, 160, 100];
+          }
+        }
+      },
+      margin: { right: 15, left: 15 }
+    });
+  }
+
+  // ── FOOTER ──
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(180, 180, 180);
+    doc.text(`${i} / ${pageCount}`, 105, 290, { align: 'center' });
+    doc.text(new Date().toLocaleString('he-IL'), 15, 290);
+  }
+
+  // Save
+  const periodLabel = document.getElementById('reportPeriod')?.selectedOptions[0]?.text || 'report';
+  const stationLabel = stationFilter ? (getStation(stationFilter)?.name || '') : 'all';
+  doc.save(`catering-report-${stationLabel}-${fromStr.replace(/\//g,'-')}.pdf`);
+}
