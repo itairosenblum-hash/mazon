@@ -6,7 +6,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>מעקב קבלן ים</title>
+  <title>מעקב קבלן זרוע הים</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -26,7 +26,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="בקרת קבלן" />
+  <meta name="apple-mobile-web-app-title" content="זרוע הים" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 </head>
 <body>
@@ -38,7 +38,7 @@
     <div class="login-logo">
       <span class="login-logo-icon">🍽</span>
       <div>
-        <div class="login-logo-title">מעקב קבלן</div>
+        <div class="login-logo-title">מעקב קבלן זרוע הים</div>
         <div class="login-logo-sub">ים</div>
       </div>
     </div>
@@ -107,8 +107,8 @@
   <!-- Sidebar -->
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <span class="logo-icon">🍽</span>
-      <span class="logo-text">מעקב קבלן<br><strong>ים</strong></span>
+      <span class="logo-icon">⚓</span>
+      <span class="logo-text">מעקב קבלן<br><strong>זרוע הים</strong></span>
     </div>
     <div class="user-badge-sidebar" id="userBadge"></div>
     <ul class="nav-links">
@@ -139,6 +139,7 @@
     <button class="bottom-nav-item" data-page="history"><span class="bn-icon">📋</span>היסטוריה</button>
     <button class="bottom-nav-item admin-nav-item" data-page="users"><span class="bn-icon">👥</span>משתמשים</button>
     <button class="bottom-nav-item admin-nav-item" data-page="reports"><span class="bn-icon">📄</span>דוחות</button>
+    <button class="bottom-nav-item admin-nav-item" data-page="messages"><span class="bn-icon">💬</span>הודעות</button>
     <button class="bottom-nav-item" onclick="logout()"><span class="bn-icon">🚪</span>יציאה</button>
   </nav>
   <button class="btn-logout-mobile" id="logoutBtnMobile" style="display:none">יציאה</button>
@@ -458,7 +459,7 @@
 
           <div class="form-group" style="margin-bottom:12px">
             <label>תוכן ההודעה <span style="color:var(--text3);font-size:0.75rem">(ניתן להשתמש ב־{שם} לשם המשתמש)</span></label>
-            <textarea id="msgBody" rows="7" placeholder="כתוב כאן את ההודעה...&#10;&#10;השתמש ב־{שם} ויוחלף אוטומטית בשם כל נמען." style="width:100%;resize:vertical;font-size:0.9rem;line-height:1.5;font-family:inherit;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);box-sizing:border-box"></textarea>
+            <textarea id="msgBody" rows="7" placeholder="כתוב כאן את ההודעה...&#10;&#10;השתמש ב־{שם} ויוחלף אוטומטית בשם כל נמען." class="msg-textarea"></textarea>
           </div>
 
           <div class="msg-preview-box" id="msgPreviewBox" style="display:none">
@@ -482,16 +483,39 @@
           <div class="msg-summary" id="msgSummary"></div>
 
           <button class="btn-save msg-send-btn" id="msgSendBtn" onclick="sendBulkWhatsapp()">
-            📤 פתח וואטסאפ לכל הנמענים שנבחרו
+            📤 שלח לנמענים שנבחרו
           </button>
           <div style="font-size:0.72rem;color:var(--text3);text-align:center;margin-top:6px">
-            ייפתח חלון וואטסאפ אחד לכל נמען — אשר כל אחד בנפרד
+            בנייד: כל הודעה תיפתח בוואטסאפ בנפרד — לחץ שלח ואז חזור
           </div>
         </div>
       </div>
     </div>
 
 </div><!-- /appShell -->
+
+<!-- WhatsApp Queue Modal -->
+<div class="wa-queue-modal" id="waQueueModal" style="display:none">
+  <div class="wa-queue-inner">
+    <div class="wa-queue-header">
+      <div class="wa-queue-title">📤 שליחת הודעות</div>
+      <div class="wa-queue-counter" id="waQueueCounter">1 מתוך 1</div>
+    </div>
+    <div class="wa-queue-progress-track">
+      <div class="wa-queue-progress-bar" id="waQueueProgress"></div>
+    </div>
+    <div class="wa-queue-info">
+      <div class="wa-queue-name" id="waQueueName"></div>
+      <div class="wa-queue-phone-label" id="waQueuePhone"></div>
+    </div>
+    <div class="wa-queue-preview" id="waQueuePreview"></div>
+    <div class="wa-queue-actions">
+      <button class="wa-queue-btn-send" onclick="waQueueSend()">📲 פתח וואטסאפ ושלח</button>
+      <button class="wa-queue-btn-skip" id="waQueueSkip" onclick="waQueueSkip()">דלג ›</button>
+    </div>
+    <button class="wa-queue-btn-cancel" onclick="closeWaQueue()">ביטול</button>
+  </div>
+</div>
 
 <script>
 function togglePasswordVisibility() {
