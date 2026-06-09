@@ -1467,3 +1467,23 @@ tr:hover td { background: var(--bg3); }
   -webkit-appearance: none;
   margin: 0;
 }
+
+
+/* ══ REPORTS PAGE ══ */
+.reports-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.4rem;
+  margin-bottom: 1.2rem;
+}
+.reports-section-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text2);
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border);
+}
