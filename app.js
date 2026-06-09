@@ -135,20 +135,13 @@ function jsonpGet(url) {
   return new Promise((resolve, reject) => {
     const cbName = '_jsonp_' + Date.now();
     const script = document.createElement('script');
-    const timer = setTimeout(() => {
-      delete window[cbName];
-      document.body.removeChild(script);
-      reject(new Error('timeout'));
-    }, 8000);
-    window[cbName] = (data) => {
-      clearTimeout(timer);
-      delete window[cbName];
-      document.body.removeChild(script);
-      resolve(data);
-    };
+    let settled = false;
+    const cleanup = () => { delete window[cbName]; if (script.parentNode) script.parentNode.removeChild(script); };
+    const timer = setTimeout(() => { if (settled) return; settled = true; cleanup(); reject(new Error('timeout')); }, 4000);
+    window[cbName] = (data) => { if (settled) return; settled = true; clearTimeout(timer); cleanup(); resolve(data); };
+    script.onerror = () => { if (settled) return; settled = true; clearTimeout(timer); cleanup(); reject(new Error('script error')); };
     script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName + '&t=' + Date.now();
-    script.onerror = () => { clearTimeout(timer); reject(new Error('script error')); };
-    document.body.appendChild(script);
+    document.head.appendChild(script);
   });
 }
 
@@ -1392,15 +1385,16 @@ function tbNext() { if (periodOffset < 0) { periodOffset++; renderDashboard(); }
 // ─────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────
-// Initialize state from localStorage immediately (sync), then refresh from Sheets
+// Show app immediately from localStorage — no waiting for network
 let state = loadState();
+loadSession();
+if (currentUser) { showAppShell(); navigate('dashboard'); }
+else showLoginScreen();
 
-(async () => {
-  await loadFromSheets();
-  loadSession();
-  if (currentUser) { showAppShell(); navigate('dashboard'); }
-  else showLoginScreen();
-})();
+// Sync from Sheets in background (non-blocking)
+loadFromSheets().then(loaded => {
+  if (loaded && currentUser) renderPage(currentPage);
+}).catch(() => {});
 
 function stepRole(btn, delta) {
   const input = btn.parentElement.querySelector('.role-count-input');
