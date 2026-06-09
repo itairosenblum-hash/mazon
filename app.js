@@ -240,7 +240,13 @@ function logout() {
 // ─────────────────────────────────────────────
 // LOGIN SCREEN
 // ─────────────────────────────────────────────
+function hideSplash() {
+  const s = document.getElementById('loadingSplash');
+  if (s) s.style.display = 'none';
+}
+
 function showLoginScreen() {
+  hideSplash();
   document.getElementById('appShell').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loginError').textContent = '';
@@ -253,6 +259,7 @@ function showLoginScreen() {
 }
 
 function showAppShell() {
+  hideSplash();
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appShell').style.display = 'flex';
   updateUserBadge();
