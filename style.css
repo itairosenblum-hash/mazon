@@ -56,6 +56,7 @@ body::before {
   background-size: 120px 120px;
   pointer-events: none;
   z-index: 0;
+  opacity: 0;
 }
 
 #app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
@@ -363,6 +364,7 @@ body::before {
   padding: 2rem 2.5rem;
   max-width: calc(100vw - var(--sidebar-w));
   overflow-x: hidden;
+  background: var(--bg);
 }
 
 .page { display: none; }
