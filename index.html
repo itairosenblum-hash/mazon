@@ -118,6 +118,7 @@
       <li data-admin-only><a href="#" class="nav-link" data-page="stations"><span class="nav-icon">🏪</span> ניהול תחנות</a></li>
       <li data-admin-only><a href="#" class="nav-link" data-page="reports"><span class="nav-icon">📄</span> דוחות PDF</a></li>
       <li data-admin-only><a href="#" class="nav-link" data-page="users"><span class="nav-icon">👥</span> ניהול משתמשים</a></li>
+      <li data-admin-only><a href="#" class="nav-link" data-page="messages"><span class="nav-icon">💬</span> הודעות</a></li>
       <li data-admin-only><a href="#" class="nav-link" data-page="settings"><span class="nav-icon">⚙️</span> הגדרות</a></li>
     </ul>
     <button class="btn-logout" id="logoutBtn">← יציאה</button>
@@ -431,8 +432,66 @@
         <div id="reportPreviewContent"></div>
       </div>
     </section>
-  </main>
-</div>
+
+    <!-- MESSAGES PAGE (Admin only) -->
+    <div class="page" id="page-messages">
+      <div class="page-header">
+        <h1><span class="h-icon">💬</span> שליחת הודעות וואטסאפ</h1>
+      </div>
+
+      <!-- Template selector -->
+      <div class="msg-layout">
+
+        <!-- LEFT: Compose -->
+        <div class="chart-card msg-compose-card">
+          <div class="chart-title"><span class="ct-icon">✍️</span> כתיבת הודעה</div>
+
+          <div class="form-group" style="margin-bottom:12px">
+            <label>תבנית מהירה</label>
+            <div class="msg-templates">
+              <button class="msg-tpl-btn" onclick="applyTemplate('reminder')">🔔 תזכורת הזנה</button>
+              <button class="msg-tpl-btn" onclick="applyTemplate('credentials')">🔑 פרטי כניסה</button>
+              <button class="msg-tpl-btn" onclick="applyTemplate('general')">📢 הודעה כללית</button>
+              <button class="msg-tpl-btn" onclick="applyTemplate('shift')">🗓️ שינוי משמרת</button>
+              <button class="msg-tpl-btn" onclick="applyTemplate('clear')">🗑️ נקה</button>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:12px">
+            <label>תוכן ההודעה <span style="color:var(--text3);font-size:0.75rem">(ניתן להשתמש ב־{שם} לשם המשתמש)</span></label>
+            <textarea id="msgBody" rows="7" placeholder="כתוב כאן את ההודעה...&#10;&#10;השתמש ב־{שם} ויוחלף אוטומטית בשם כל נמען." style="width:100%;resize:vertical;font-size:0.9rem;line-height:1.5;font-family:inherit;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text);box-sizing:border-box"></textarea>
+          </div>
+
+          <div class="msg-preview-box" id="msgPreviewBox" style="display:none">
+            <div style="font-size:0.7rem;color:var(--text3);margin-bottom:4px">תצוגה מקדימה:</div>
+            <div id="msgPreviewText" style="white-space:pre-wrap;font-size:0.85rem;line-height:1.5;color:var(--text)"></div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Recipients -->
+        <div class="chart-card msg-recipients-card">
+          <div class="chart-title"><span class="ct-icon">👥</span> נמענים</div>
+
+          <div class="msg-filter-row">
+            <button class="msg-filter-btn active" onclick="selectAllRecipients(true)">בחר הכל</button>
+            <button class="msg-filter-btn" onclick="selectAllRecipients(false)">בטל הכל</button>
+            <button class="msg-filter-btn" onclick="selectNoPhone()">ללא טלפון ⚠️</button>
+          </div>
+
+          <div id="msgRecipientsList" class="msg-recipients-list"></div>
+
+          <div class="msg-summary" id="msgSummary"></div>
+
+          <button class="btn-save msg-send-btn" id="msgSendBtn" onclick="sendBulkWhatsapp()">
+            📤 פתח וואטסאפ לכל הנמענים שנבחרו
+          </button>
+          <div style="font-size:0.72rem;color:var(--text3);text-align:center;margin-top:6px">
+            ייפתח חלון וואטסאפ אחד לכל נמען — אשר כל אחד בנפרד
+          </div>
+        </div>
+      </div>
+    </div>
+
 </div><!-- /appShell -->
 
 <script>
