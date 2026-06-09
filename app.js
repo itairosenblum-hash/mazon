@@ -1170,6 +1170,32 @@ function deleteStation(id){
 // ─────────────────────────────────────────────
 let editingUserId = null;
 
+function formatPhoneForWhatsapp(phone) {
+  if (!phone) return null;
+  let p = phone.replace(/\D/g,'');
+  if (p.startsWith('0')) p = '972' + p.slice(1);
+  return p;
+}
+
+function sendWhatsappCredentials(userId) {
+  const u = state.users.find(u=>u.id===userId);
+  if (!u) return;
+  const phone = formatPhoneForWhatsapp(u.phone);
+  if (!phone) { alert('אין מספר טלפון למשתמש זה'); return; }
+  const msg = `שלום ${u.name} 👋\n\nפרטי הכניסה שלך למערכת:\nשם משתמש: ${u.username}\nסיסמה: ${u.password || '(כפי שנקבע)'}\n\nלכניסה: https://itairosenblum-hash.github.io/mazon/`;
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function sendWhatsappReminder(userId) {
+  const u = state.users.find(u=>u.id===userId);
+  if (!u) return;
+  const phone = formatPhoneForWhatsapp(u.phone);
+  if (!phone) { alert('אין מספר טלפון למשתמש זה'); return; }
+  const stationNames = (u.stationIds||[]).map(sid=>{const s=getStation(sid);return s?s.name:''}).filter(Boolean).join(', ') || 'התחנה שלך';
+  const msg = `שלום ${u.name} 👋\n\nתזכורת: טרם ביצעת הזנת דוח נוכחות להיום עבור: ${stationNames}.\n\nנא להיכנס למערכת ולעדכן את הנתונים 🙏\nhttps://itairosenblum-hash.github.io/mazon/`;
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
 function renderUsers() {
   const container = document.getElementById('usersList');
   container.innerHTML = state.users.map(u => {
@@ -1179,16 +1205,23 @@ function renderUsers() {
           const s = getStation(sid);
           return s ? `<span class="station-tag">${s.name}</span>` : '';
         }).join('') || '<span style="color:var(--text3)">ללא תחנה</span>';
+    const phoneDisplay = u.phone ? `<div class="user-phone">📱 ${u.phone}</div>` : '';
+    const waButtons = u.phone ? `
+      <button class="btn-icon wa-green" onclick="sendWhatsappCredentials('${u.id}')" title="שלח פרטי כניסה בוואטסאפ">💬 כניסה</button>
+      ${u.role!=='admin'?`<button class="btn-icon wa-orange" onclick="sendWhatsappReminder('${u.id}')" title="שלח תזכורת הזנת דוח">🔔 תזכורת</button>`:''}
+    ` : '';
     return `<div class="user-card">
       <div class="user-card-left">
         <div class="user-avatar">${u.name[0]}</div>
         <div>
           <div class="user-name">${u.name} ${u.role==='admin'?'👑':''}</div>
           <div class="user-username">@${u.username}</div>
+          ${phoneDisplay}
           <div class="user-stations">${stationNames}</div>
         </div>
       </div>
       <div class="user-card-actions">
+        ${waButtons}
         <button class="btn-icon" onclick="openUserModal('${u.id}')">✏ עריכה</button>
         ${u.id!=='u0'?`<button class="btn-icon danger" onclick="deleteUser('${u.id}')">✕ מחק</button>`:''}
       </div>
@@ -1207,6 +1240,7 @@ function openUserModal(userId) {
   document.getElementById('modalUserPassword').value = '';
   document.getElementById('modalUserPassword').placeholder = user ? 'השאר ריק לאי-שינוי' : 'סיסמה';
   document.getElementById('modalUserRole').value = user ? user.role : 'station';
+  document.getElementById('modalUserPhone').value = user ? (user.phone||'') : '';
 
   renderUserStationCheckboxes(user);
   document.getElementById('userModal').style.display = 'flex';
@@ -1235,6 +1269,7 @@ document.getElementById('btnSaveUser').addEventListener('click', ()=>{
   const username = document.getElementById('modalUserUsername').value.trim();
   const password = document.getElementById('modalUserPassword').value;
   const role = document.getElementById('modalUserRole').value;
+  const phone = document.getElementById('modalUserPhone').value.trim();
   const stationIds = role === 'admin' ? [] :
     [...document.querySelectorAll('#modalUserStations input:checked')].map(cb=>cb.value);
 
@@ -1246,11 +1281,11 @@ document.getElementById('btnSaveUser').addEventListener('click', ()=>{
 
   if (editingUserId) {
     const u = state.users.find(u=>u.id===editingUserId);
-    u.name=name; u.username=username; u.role=role; u.stationIds=stationIds;
+    u.name=name; u.username=username; u.role=role; u.stationIds=stationIds; u.phone=phone;
     if (password) u.password=password;
   } else {
     if (!password) { alert('יש להזין סיסמה'); return; }
-    state.users.push({ id:'u'+Date.now(), username, password, role, name, stationIds });
+    state.users.push({ id:'u'+Date.now(), username, password, role, name, stationIds, phone });
   }
   saveState();
   closeUserModal();
