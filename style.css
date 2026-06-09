@@ -1051,8 +1051,13 @@ tr:hover td { background: var(--bg3); }
 }
 .user-name { font-weight: 700; font-size: 0.95rem; }
 .user-username { font-size: 0.75rem; color: var(--text2); font-family: 'Space Mono', monospace; margin: 2px 0; }
+.user-phone { font-size: 0.75rem; color: var(--text2); margin: 1px 0; }
 .user-stations { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-.user-card-actions { display: flex; gap: 7px; }
+.user-card-actions { display: flex; gap: 7px; flex-wrap: wrap; align-items: flex-start; }
+.btn-icon.wa-green { border-color: #25D366; color: #25D366; }
+.btn-icon.wa-green:hover { background: #25D366; color: #fff; border-color: #25D366; }
+.btn-icon.wa-orange { border-color: #f59e0b; color: #f59e0b; }
+.btn-icon.wa-orange:hover { background: #f59e0b; color: #fff; border-color: #f59e0b; }
 
 .station-tag {
   display: inline-block;
