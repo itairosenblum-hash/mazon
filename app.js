@@ -734,7 +734,14 @@ function renderDashboard() {
       });
       const pct=sR?Math.round((sC/sR)*100):100;
       const cls=pct>=90?'badge-ok':pct>=70?'badge-warn':'badge-danger';
-      return `<tr><td><strong>${station.name}</strong></td>${state.roles.map(r=>`<td>${roleSums[r]||0}</td>`).join('')}<td><strong>${sTotal}</strong></td><td><span class="badge ${cls}">${pct}%</span></td></tr>`;
+      const days=Math.max(stEntries.length,1);
+      const totalRequired=state.roles.reduce((s,r)=>s+((station.minStaff||{})[r]||0)*days,0);
+      return `<tr><td><strong>${station.name}</strong></td>${state.roles.map(r=>{
+        const actual=roleSums[r]||0;
+        const req=((station.minStaff||{})[r]||0)*days;
+        const cellCls=req>0?(actual>=req?'cell-ok':actual>=req*0.7?'cell-warn':'cell-danger'):'';
+        return `<td class="${cellCls}">${actual}${req>0?` / ${req}`:''}</td>`;
+      }).join('')}<td><strong>${sTotal}${totalRequired>0?` / ${totalRequired}`:''}</strong></td><td><span class="badge ${cls}">${pct}%</span></td></tr>`;
     }).join('')}</tbody></table>`;
 
 
