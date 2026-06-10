@@ -517,11 +517,16 @@ function renderDashboard() {
   const avgPerDay = (totalPresence / period).toFixed(1);
   const stationsActive = new Set(entries.map(e => e.stationId)).size;
 
-  // עמידה בדרישות: סה"כ נוכחים מתוך סה"כ תקן
-  const totalRequired = visibleStations.reduce((s, station) => {
-    return s + state.roles.reduce((rs, r) => rs + ((station.minStaff||{})[r]||0), 0);
-  }, 0);
-  const compliancePct = totalRequired > 0 ? Math.min(100, Math.round((totalPresence / period / totalRequired) * 100)) : 100;
+  let compliant=0, total=0;
+  entries.forEach(entry => {
+    const station = getStation(entry.stationId);
+    if (!station) return;
+    state.roles.forEach(role => {
+      const min = (station.minStaff||{})[role]||0;
+      if (min > 0) { total++; if ((entry.counts[role]||0) >= min) compliant++; }
+    });
+  });
+  const compliancePct = total ? Math.round((compliant/total)*100) : 100;
   const compColor = compliancePct>=90 ? '#52c07a' : compliancePct>=70 ? '#e07a3a' : '#e05252';
 
   const periodSubLabel = {1:'היום',7:'שבוע',30:'חודש',90:'רבעון',365:'שנה'}[period] || period+' ימים';
@@ -694,24 +699,30 @@ function renderDashboard() {
     .filter(e=>{ if(!isAdmin()) return currentUser.stationIds.includes(e.stationId); return true; })
     .filter(e=> selectedStationId ? e.stationId===selectedStationId : true);
 
-  const trendData = daysArr.map(date=>({
-    date,
-    total: allFilteredEntries.filter(e=>e.date===date).reduce((s,e)=>s+totalForEntry(e),0)
-  }));
+  const trendStations = selectedStationId
+    ? visibleStations.filter(s=>s.id===selectedStationId)
+    : visibleStations;
+  const trendTotalRequired = trendStations.reduce((s,station)=>
+    s + state.roles.reduce((rs,r)=>rs+((station.minStaff||{})[r]||0),0), 0);
+  const trendData = daysArr.map(date=>{
+    const dayTotal = allFilteredEntries.filter(e=>e.date===date).reduce((s,e)=>s+totalForEntry(e),0);
+    const pct = trendTotalRequired > 0 ? Math.min(100, Math.round((dayTotal/trendTotalRequired)*100)) : 0;
+    return { date, total: dayTotal, pct };
+  });
   const maxTicks = trendDays <= 7 ? trendDays : trendDays <= 30 ? 10 : 12;
   destroyChart(chartTrend);
   chartTrend = new Chart(document.getElementById('chartTrend'),{
     type:'line',
     data:{ labels:daysArr.map(d=>formatDate(d)), datasets:[{
-      label:'עובדים', data:trendData.map(d=>d.total),
+      label:'אחוז עמידה', data:trendData.map(d=>d.pct),
       borderColor:'#e8c547', backgroundColor:'rgba(232,197,71,0.07)',
       fill:true, tension:0.35, pointRadius: trendDays<=7?5:3, pointBackgroundColor:'#e8c547'
     }]},
     options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y}% (${trendData[ctx.dataIndex].total} עובדים)`}}},
       scales:{
         x:{ticks:{color:C.tick,maxTicksLimit:maxTicks,font:{family:'Heebo'}},grid:{color:C.grid}},
-        y:{ticks:{color:C.tick},grid:{color:C.grid}}
+        y:{min:0,max:100,ticks:{color:C.tick,callback:v=>v+'%'},grid:{color:C.grid}}
       }
     }
   });
