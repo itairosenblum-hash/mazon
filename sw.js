@@ -1,8 +1,10 @@
-// SW v2 - network-first, no caching of app files
-const CACHE = 'mazon-v2';
+const CACHE = 'mazon-v1781095760';
+const CORE_FILES = ['/', '/index.html', '/style.css', '/app.js', '/manifest.json'];
 
 self.addEventListener('install', e => {
-  self.skipWaiting();
+  e.waitUntil(
+    caches.open(CACHE).then(c => c.addAll(CORE_FILES)).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
@@ -14,17 +16,19 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // תמיד נסה רשת קודם, קאש רק כגיבוי
+  // בקשות ל-Google Sheets — תמיד מהרשת, ללא קאש
+  if (e.request.url.includes('script.google.com')) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
+  // שאר הקבצים — רשת קודם, קאש כגיבוי
   e.respondWith(
-    fetch(e.request)
-      .then(res => {
-        // שמור בקאש רק בקשות GET של קבצים סטטיים לגיבוי offline
-        if (e.request.method === 'GET' && !e.request.url.includes('script.google.com')) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
-      })
-      .catch(() => caches.match(e.request))
+    fetch(e.request).then(res => {
+      if (e.request.method === 'GET' && res.status === 200) {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+      }
+      return res;
+    }).catch(() => caches.match(e.request))
   );
 });
