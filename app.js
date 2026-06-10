@@ -755,7 +755,14 @@ function renderDashboard() {
         });
         grandRequired+=state.roles.reduce((s,r)=>s+((station.minStaff||{})[r]||0)*days,0);
       });
-      return `<tr style="border-top:2px solid var(--border);background:var(--bg-secondary)"><td><strong>סה"כ</strong></td>${state.roles.map(r=>`<td><strong>${grandRoleSums[r]||0}</strong></td>`).join('')}<td><strong>${grandTotal}${grandRequired>0?` / ${grandRequired}`:''}</strong></td><td></td></tr>`;
+      const grandRoleRequired={};
+      state.roles.forEach(r=>{ grandRoleRequired[r]=0; });
+      visibleStations.forEach(station=>{
+        const stEntries2=entries.filter(e=>e.stationId===station.id);
+        const days2=Math.max(stEntries2.length,1);
+        state.roles.forEach(r=>{ grandRoleRequired[r]+=(( station.minStaff||{})[r]||0)*days2; });
+      });
+      return `<tr style="border-top:2px solid var(--border);background:var(--bg-secondary)"><td><strong>סה"כ</strong></td>${state.roles.map(r=>{const req=grandRoleRequired[r]||0;const act=grandRoleSums[r]||0;const cls=req>0?(act>=req?'cell-ok':act>=req*0.7?'cell-warn':'cell-danger'):'';return `<td class="${cls}"><strong>${act}${req>0?` / ${req}`:''}</strong></td>`;}).join('')}<td><strong>${grandTotal}${grandRequired>0?` / ${grandRequired}`:''}</strong></td><td></td></tr>`;
     })()}</tbody></table>`;
 
 
