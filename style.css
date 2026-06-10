@@ -498,6 +498,7 @@ body::before {
    TABLE
 ══════════════════════════════ */
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+#stationSummaryTable td, #stationSummaryTable th { text-align: center; }
 table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 th {
   background: var(--bg3);
