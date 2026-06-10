@@ -517,16 +517,10 @@ function renderDashboard() {
   const avgPerDay = (totalPresence / period).toFixed(1);
   const stationsActive = new Set(entries.map(e => e.stationId)).size;
 
-  let compliant=0, total=0;
-  entries.forEach(entry => {
-    const station = getStation(entry.stationId);
-    if (!station) return;
-    state.roles.forEach(role => {
-      const min = (station.minStaff||{})[role]||0;
-      if (min > 0) { total++; if ((entry.counts[role]||0) >= min) compliant++; }
-    });
-  });
-  const compliancePct = total ? Math.round((compliant/total)*100) : 100;
+  const totalRequired = visibleStations.reduce((s, station) =>
+    s + state.roles.reduce((rs, r) => rs + ((station.minStaff||{})[r]||0), 0), 0);
+  const dailyPresence = period > 0 ? totalPresence / period : 0;
+  const compliancePct = totalRequired > 0 ? Math.min(100, Math.round((dailyPresence / totalRequired) * 100)) : 100;
   const compColor = compliancePct>=90 ? '#52c07a' : compliancePct>=70 ? '#e07a3a' : '#e05252';
 
   const periodSubLabel = {1:'היום',7:'שבוע',30:'חודש',90:'רבעון',365:'שנה'}[period] || period+' ימים';
@@ -534,7 +528,7 @@ function renderDashboard() {
     { label: 'סה"כ עובדים', value: totalPresence, sub: periodSubLabel, color:'#e8c547', icon:'🍽' },
     { label: 'ממוצע ליום',  value: avgPerDay,     sub: 'כלל התחנות',  color:'#5aa0e0', icon:'📅' },
     { label: 'תחנות פעילות',value: stationsActive+'/'+visibleStations.length, sub:'דיווחו', color:'#9b7fe8', icon:'🏪' },
-    { label: 'עמידה בדרישות',value: compliancePct+'%', sub:'מינימום כ"א', color:compColor, icon:'✅' },
+    { label: 'עמידה בדרישות',value: compliancePct+'%', sub: Math.round(dailyPresence)+' / '+totalRequired+' עובדים', color:compColor, icon:'✅' },
   ];
 
   document.getElementById('summaryCards').innerHTML = cards.map(c=>`
