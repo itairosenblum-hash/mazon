@@ -1467,6 +1467,13 @@ loadFromSheets().then(loaded => {
   if (loaded && currentUser) renderPage(currentPage);
 }).catch(() => {});
 
+// סנכרון אוטומטי כל 60 שניות
+setInterval(() => {
+  loadFromSheets().then(loaded => {
+    if (loaded && currentUser) renderPage(currentPage);
+  }).catch(() => {});
+}, 60000);
+
 function stepRole(btn, delta) {
   const input = btn.parentElement.querySelector('.role-count-input');
   const val = Math.max(0, Math.min(99, (parseInt(input.value) || 0) + delta));
