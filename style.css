@@ -523,6 +523,9 @@ tr:hover td { background: var(--bg3); }
 .badge-ok { background: rgba(82,192,122,0.15); color: var(--green); }
 .badge-warn { background: rgba(224,122,58,0.15); color: var(--orange); }
 .badge-danger { background: rgba(224,82,82,0.15); color: var(--red); }
+.cell-ok { color: var(--green); }
+.cell-warn { color: var(--orange); }
+.cell-danger { color: var(--red); font-weight: 600; }
 
 /* ══════════════════════════════
    ENTRY FORM
