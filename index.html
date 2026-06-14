@@ -108,7 +108,7 @@
     </div>
     <div class="tb-row3" id="tbNavRow" style="display:none">
       <button class="tb-nav-btn" onclick="tbPrev()">&#8594;</button>
-      <span id="tbDate" class="tb-date"></span>
+      <span id="tbDate" class="tb-date" title="לחץ לבחירת תאריך"></span>
       <button class="tb-nav-btn" id="tbNext" onclick="tbNext()">&#8592;</button>
     </div>
   </div>
@@ -179,9 +179,10 @@
           </div>
           <div class="period-nav">
             <button class="period-nav-btn" id="periodPrev" title="תקופה קודמת">&#8594;</button>
-            <span id="dashboardDateRange" class="date-range-label"></span>
+            <span id="dashboardDateRange" class="date-range-label" title="לחץ לבחירת תאריך"></span>
             <button class="period-nav-btn" id="periodNext" title="תקופה הבאה">&#8592;</button>
           </div>
+          <input type="date" id="dashboardDatePicker" style="position:fixed;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none" />
         </div>
       </div>
       <div id="weekendAutoNote" style="font-size:0.78rem;color:var(--text3);margin:-4px 0 10px;display:none"></div>
