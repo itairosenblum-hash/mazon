@@ -434,9 +434,13 @@ function refreshHolidaysCache() {
     if (dates.length) {
       holidayDatesSet = new Set(dates);
       try { localStorage.setItem(HOLIDAYS_CACHE_KEY, JSON.stringify({fetchedAt:Date.now(), dates})); } catch(e){}
-      const dashView = document.getElementById('view-dashboard') || document.getElementById('page-dashboard');
+      const dashView = document.getElementById('page-dashboard');
       if (dashView && dashView.classList.contains('active')) {
         try { renderDashboard(); } catch(e){}
+      }
+      const entryView = document.getElementById('page-entry');
+      if (entryView && entryView.classList.contains('active')) {
+        try { renderRoleInputs(); } catch(e){}
       }
     }
   }).catch(()=>{});
