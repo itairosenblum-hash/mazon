@@ -645,7 +645,7 @@ function renderDashboard() {
     { label: 'סה"כ עובדים', value: totalPresence, sub: periodSubLabel, color:'#e8c547', icon:'🍽' },
     { label: 'ממוצע ליום',  value: avgPerDay,     sub: 'כלל התחנות',  color:'#5aa0e0', icon:'📅' },
     { label: 'תחנות פעילות',value: stationsActive+'/'+visibleStations.length, sub:'דיווחו', color:'#9b7fe8', icon:'🏪' },
-    { label: 'עמידה בדרישות',value: compliancePct+'%', sub: Math.round(dailyPresence)+' / '+totalRequired+' עובדים', color:compColor, icon:'✅' },
+    { label: 'עמידה בדרישות',value: compliancePct+'%', sub: Math.round(dailyPresence)+' בפועל מתוך '+totalRequired+' בתקן', color:compColor, icon:'✅' },
   ];
 
   document.getElementById('summaryCards').innerHTML = cards.map(c=>`
