@@ -402,7 +402,15 @@ function formatDate(d) {
   const [y,m,day] = d.split('-');
   return `${day}/${m}/${y}`;
 }
-function today() { return new Date().toISOString().slice(0,10); }
+// המרת אובייקט Date למחרוזת YYYY-MM-DD לפי הזמן המקומי (לא UTC!)
+// שימוש ב-toISOString() כאן גרס תאריך שגוי באזורי זמן עם UTC+, וגרם לזיהוי שגוי של ימי שישי/שבת
+function toLocalDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function today() { return toLocalDateStr(new Date()); }
 function getStation(id) { return state.stations.find(s => s.id === id); }
 
 // ─────────────────────────────────────────────
@@ -478,7 +486,7 @@ function avgRequiredForRole(stations, dates, role) {
 }
 function periodDateStrings(fromDate, toDate) {
   const out=[];
-  for(let d=new Date(fromDate); d<=toDate; d.setDate(d.getDate()+1)) out.push(d.toISOString().slice(0,10));
+  for(let d=new Date(fromDate); d<=toDate; d.setDate(d.getDate()+1)) out.push(toLocalDateStr(d));
   return out;
 }
 
@@ -608,7 +616,7 @@ function renderDashboard() {
   ['periodNext','tbNext'].forEach(id=>{const btn=document.getElementById(id);if(btn)btn.disabled=periodOffset>=0;});
   // Store the reference date for the date-picker (so clicking the label opens the calendar on this date)
   const dashboardDatePicker = document.getElementById('dashboardDatePicker');
-  if (dashboardDatePicker) dashboardDatePicker.value = toDate.toISOString().slice(0,10);
+  if (dashboardDatePicker) dashboardDatePicker.value = toLocalDateStr(toDate);
   const C = getChartColors();
   const visibleStations = selectedStationId
     ? allowedStations().filter(s => s.id === selectedStationId)
@@ -804,7 +812,7 @@ function renderDashboard() {
   else { trendFrom.setTime(fromDate.getTime()); }
   const daysArr = [];
   for (let d = new Date(trendFrom); d <= trendTo; d.setDate(d.getDate()+1)) {
-    daysArr.push(d.toISOString().slice(0,10));
+    daysArr.push(toLocalDateStr(d));
   }
   // Use all entries in the trend window (not just the selected period)
   // but filtered by station and user permissions
@@ -1669,8 +1677,8 @@ function renderReports() {
   const fromDate = new Date(today); fromDate.setDate(today.getDate() - 30);
   const fromEl = document.getElementById('reportFrom');
   const toEl = document.getElementById('reportTo');
-  if (fromEl) fromEl.value = fromDate.toISOString().split('T')[0];
-  if (toEl) toEl.value = today.toISOString().split('T')[0];
+  if (fromEl) fromEl.value = toLocalDateStr(fromDate);
+  if (toEl) toEl.value = toLocalDateStr(today);
 }
 
 function getReportDateRange() {
