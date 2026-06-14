@@ -600,9 +600,15 @@ function renderDashboard() {
   // Show date range using getPeriodRange
   const { from: fromDate, to: toDate } = getPeriodRange(period);
   const fmtShort = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
-  const rangeText = period===1 ? fmtShort(toDate) : `${fmtShort(fromDate)} — ${fmtShort(toDate)}`;
+  const dayNames = ['יום ראשון','יום שני','יום שלישי','יום רביעי','יום חמישי','יום שישי','יום שבת'];
+  const rangeText = period===1
+    ? `📅 ${dayNames[toDate.getDay()]}, ${fmtShort(toDate)}`
+    : `📅 ${fmtShort(fromDate)} — ${dayNames[toDate.getDay()]}, ${fmtShort(toDate)}`;
   ['dashboardDateRange','tbDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=rangeText;});
   ['periodNext','tbNext'].forEach(id=>{const btn=document.getElementById(id);if(btn)btn.disabled=periodOffset>=0;});
+  // Store the reference date for the date-picker (so clicking the label opens the calendar on this date)
+  const dashboardDatePicker = document.getElementById('dashboardDatePicker');
+  if (dashboardDatePicker) dashboardDatePicker.value = toDate.toISOString().slice(0,10);
   const C = getChartColors();
   const visibleStations = selectedStationId
     ? allowedStations().filter(s => s.id === selectedStationId)
@@ -1104,6 +1110,35 @@ document.getElementById('periodPrev').addEventListener('click', () => {
 });
 document.getElementById('periodNext').addEventListener('click', () => {
   if (periodOffset < 0) { periodOffset++; renderDashboard(); }
+});
+
+// Click the date label to open a native calendar and jump to any date
+function openDashboardDatePicker() {
+  const picker = document.getElementById('dashboardDatePicker');
+  if (!picker) return;
+  if (typeof picker.showPicker === 'function') {
+    try { picker.showPicker(); return; } catch(e) {}
+  }
+  picker.focus();
+  picker.click();
+}
+['dashboardDateRange','tbDate'].forEach(id=>{
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', openDashboardDatePicker);
+});
+document.getElementById('dashboardDatePicker').addEventListener('change', (ev)=>{
+  const val = ev.target.value; // YYYY-MM-DD
+  if (!val) return;
+  const [y,m,d] = val.split('-').map(Number);
+  const picked = new Date(y, m-1, d); picked.setHours(0,0,0,0);
+  const now = new Date(); now.setHours(0,0,0,0);
+  periodOffset = Math.round((picked - now) / 86400000);
+  // Jump to single-day view for the chosen date
+  const dashSel = document.getElementById('dashboardPeriod');
+  const tbSel = document.getElementById('tbPeriod');
+  if (dashSel) dashSel.value = '1';
+  if (tbSel) tbSel.value = '1';
+  renderDashboard();
 });
 
 // ─────────────────────────────────────────────
