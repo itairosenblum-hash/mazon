@@ -736,7 +736,7 @@ tr:hover td { background: var(--bg3); }
   align-items: center;
 }
 .roles-min-label { font-size: 0.85rem; color: var(--text); }
-.roles-min-input {
+.roles-min-input, .roles-min-special-input {
   background: var(--bg3);
   border: 1px solid var(--border);
   color: var(--text);
@@ -747,7 +747,7 @@ tr:hover td { background: var(--bg3); }
   text-align: center;
   width: 70px;
 }
-.roles-min-input:focus { outline: none; border-color: var(--accent); }
+.roles-min-input:focus, .roles-min-special-input:focus { outline: none; border-color: var(--accent); }
 
 /* ══════════════════════════════
    SETTINGS
