@@ -405,6 +405,79 @@ function formatDate(d) {
 function today() { return new Date().toISOString().slice(0,10); }
 function getStation(id) { return state.stations.find(s => s.id === id); }
 
+// ─────────────────────────────────────────────
+// תקן סופ"ש/חג - זיהוי אוטומטי של סופי שבוע וחגים
+// ─────────────────────────────────────────────
+const HOLIDAYS_CACHE_KEY = 'mazon_holidays_cache_v1';
+let holidayDatesSet = new Set();
+
+function loadHolidaysFromCache() {
+  try {
+    const raw = localStorage.getItem(HOLIDAYS_CACHE_KEY);
+    if (!raw) return;
+    const cache = JSON.parse(raw);
+    if (Array.isArray(cache.dates)) holidayDatesSet = new Set(cache.dates);
+  } catch(e) {}
+}
+loadHolidaysFromCache();
+
+function refreshHolidaysCache() {
+  const y = new Date().getFullYear();
+  const years = [y-1, y, y+1, y+2];
+  Promise.all(years.map(yr =>
+    fetch(`https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=off&mod=off&nx=off&mf=off&ss=off&c=off&geo=none&i=on&year=${yr}`)
+      .then(r=>r.json())
+      .then(d=>(d.items||[]).filter(it=>it.yomtov).map(it=>String(it.date).slice(0,10)))
+      .catch(()=>[])
+  )).then(results=>{
+    const dates = [...new Set(results.flat())];
+    if (dates.length) {
+      holidayDatesSet = new Set(dates);
+      try { localStorage.setItem(HOLIDAYS_CACHE_KEY, JSON.stringify({fetchedAt:Date.now(), dates})); } catch(e){}
+      const dashView = document.getElementById('view-dashboard') || document.getElementById('page-dashboard');
+      if (dashView && dashView.classList.contains('active')) {
+        try { renderDashboard(); } catch(e){}
+      }
+    }
+  }).catch(()=>{});
+}
+refreshHolidaysCache();
+
+function isWeekendDate(dateStr) {
+  if (!dateStr) return false;
+  const dow = new Date(dateStr+'T00:00:00').getDay();
+  return dow === 5 || dow === 6; // שישי, שבת
+}
+function isHolidayDate(dateStr) { return holidayDatesSet.has(dateStr); }
+function isSpecialDay(dateStr) { return isWeekendDate(dateStr) || isHolidayDate(dateStr); }
+
+// מחזיר את אוסף התקן הרלוונטי לתחנה בתאריך נתון - תקן רגיל או תקן סופ"ש/חג
+function getStandard(station, dateStr) {
+  if (!station) return {};
+  return isSpecialDay(dateStr) ? (station.minStaffSpecial || {}) : (station.minStaff || {});
+}
+function requiredTotalForDate(station, dateStr) {
+  const std = getStandard(station, dateStr);
+  return state.roles.reduce((s,r)=>s+(std[r]||0),0);
+}
+// ממוצע התקן הכולל למספר תחנות על פני אוסף תאריכים
+function avgRequiredTotal(stations, dates) {
+  const ds = (dates && dates.length) ? dates : [today()];
+  const total = ds.reduce((s,d)=>s+stations.reduce((ss,st)=>ss+requiredTotalForDate(st,d),0),0);
+  return total/ds.length;
+}
+// ממוצע התקן לתפקיד ספציפי על פני תחנות ותאריכים
+function avgRequiredForRole(stations, dates, role) {
+  const ds = (dates && dates.length) ? dates : [today()];
+  const total = ds.reduce((s,d)=>s+stations.reduce((ss,st)=>ss+(getStandard(st,d)[role]||0),0),0);
+  return total/ds.length;
+}
+function periodDateStrings(fromDate, toDate) {
+  const out=[];
+  for(let d=new Date(fromDate); d<=toDate; d.setDate(d.getDate()+1)) out.push(d.toISOString().slice(0,10));
+  return out;
+}
+
 function allowedStations() {
   if (isAdmin()) return state.stations;
   if (!currentUser) return [];
@@ -517,10 +590,11 @@ function renderDashboard() {
   const avgPerDay = (totalPresence / period).toFixed(1);
   const stationsActive = new Set(entries.map(e => e.stationId)).size;
 
-  const totalRequired = visibleStations.reduce((s, station) =>
-    s + state.roles.reduce((rs, r) => rs + ((station.minStaff||{})[r]||0), 0), 0);
+  const periodDatesArr = periodDateStrings(fromDate, toDate);
+  const totalRequiredRaw = avgRequiredTotal(visibleStations, periodDatesArr);
+  const totalRequired = Math.round(totalRequiredRaw);
   const dailyPresence = period > 0 ? totalPresence / period : 0;
-  const compliancePct = totalRequired > 0 ? Math.min(100, Math.round((dailyPresence / totalRequired) * 100)) : 100;
+  const compliancePct = totalRequiredRaw > 0 ? Math.min(100, Math.round((dailyPresence / totalRequiredRaw) * 100)) : 100;
   const compColor = compliancePct>=90 ? '#52c07a' : compliancePct>=70 ? '#e07a3a' : '#e05252';
 
   const periodSubLabel = {1:'היום',7:'שבוע',30:'חודש',90:'רבעון',365:'שנה'}[period] || period+' ימים';
@@ -545,7 +619,9 @@ function renderDashboard() {
     const actual = stEntries.length
       ? Math.round(stEntries.reduce((sum,e)=>sum+totalForEntry(e),0) / stEntries.length)
       : 0;
-    const required = state.roles.reduce((sum,r)=>sum+((s.minStaff||{})[r]||0),0);
+    const required = stEntries.length
+      ? Math.round(stEntries.reduce((sum,e)=>sum+requiredTotalForDate(s,e.date),0) / stEntries.length)
+      : Math.round(avgRequiredTotal([s], periodDatesArr));
     return { id:s.id, name:s.name, actual, required, stEntries };
   });
 
@@ -603,15 +679,15 @@ function renderDashboard() {
     }
   });
 
-  // Role chart: actual (avg per day) vs required (sum of minStaff across visible stations)
-  const daysCount = entries.length
-    ? new Set(entries.map(e=>e.date)).size || 1
-    : 1;
+  // Role chart: actual (avg per day) vs required (תקן רגיל/סופ"ש-חג בהתאם לתאריך)
+  const entryDates = entries.length ? [...new Set(entries.map(e=>e.date))] : [];
+  const daysCount = entryDates.length || 1;
+  const requiredDates = entryDates.length ? entryDates : periodDatesArr;
 
   const roleTotals = state.roles.map((role,i) => {
     const actualTotal = entries.reduce((s,e)=>s+(e.counts[role]||0), 0);
     const avgActual = Math.round(actualTotal / daysCount);
-    const required = visibleStations.reduce((s,st)=>s+((st.minStaff||{})[role]||0), 0);
+    const required = Math.round(avgRequiredForRole(visibleStations, requiredDates, role));
     return { role, emoji:roleEmoji(role), avgActual, required, color: C.palette[i%C.palette.length] };
   }).filter(r => r.avgActual > 0 || r.required > 0);
 
@@ -696,12 +772,11 @@ function renderDashboard() {
   const trendStations = selectedStationId
     ? visibleStations.filter(s=>s.id===selectedStationId)
     : visibleStations;
-  const trendTotalRequired = trendStations.reduce((s,station)=>
-    s + state.roles.reduce((rs,r)=>rs+((station.minStaff||{})[r]||0),0), 0);
   const trendData = daysArr.map(date=>{
     const dayTotal = allFilteredEntries.filter(e=>e.date===date).reduce((s,e)=>s+totalForEntry(e),0);
-    const pct = trendTotalRequired > 0 ? Math.min(100, Math.round((dayTotal/trendTotalRequired)*100)) : 0;
-    return { date, total: dayTotal, pct };
+    const dayRequired = trendStations.reduce((s,station)=>s+requiredTotalForDate(station,date),0);
+    const pct = dayRequired > 0 ? Math.min(100, Math.round((dayTotal/dayRequired)*100)) : 0;
+    return { date, total: dayTotal, pct, required: dayRequired };
   });
   const maxTicks = trendDays <= 7 ? trendDays : trendDays <= 30 ? 10 : 12;
   destroyChart(chartTrend);
@@ -725,42 +800,39 @@ function renderDashboard() {
     <thead><tr><th>תחנה</th>${state.roles.map(r=>`<th>${roleEmoji(r)} ${r}</th>`).join('')}<th>סה"כ</th><th>ציות</th></tr></thead>
     <tbody>${visibleStations.map(station=>{
       const stEntries=entries.filter(e=>e.stationId===station.id);
-      const roleSums={}; let sTotal=0, sC=0, sR=0;
+      const dates = stEntries.length ? stEntries.map(e=>e.date) : [today()];
+      const roleSums={}; const roleReq={}; let sTotal=0, sC=0, sR=0;
       state.roles.forEach(role=>{
         const sum=stEntries.reduce((s,e)=>s+(e.counts[role]||0),0);
         roleSums[role]=sum; sTotal+=sum;
-        const min=(station.minStaff||{})[role]||0;
-        if(min>0){sR++;if(sum/Math.max(stEntries.length,1)>=min)sC++;}
+        const reqTotal=dates.reduce((s,d)=>s+(getStandard(station,d)[role]||0),0);
+        roleReq[role]=reqTotal;
+        if(reqTotal>0){sR++;if(sum>=reqTotal)sC++;}
       });
       const pct=sR?Math.round((sC/sR)*100):100;
       const cls=pct>=90?'badge-ok':pct>=70?'badge-warn':'badge-danger';
-      const days=Math.max(stEntries.length,1);
-      const totalRequired=state.roles.reduce((s,r)=>s+((station.minStaff||{})[r]||0)*days,0);
+      const totalRequired=state.roles.reduce((s,r)=>s+(roleReq[r]||0),0);
       return `<tr><td><strong>${station.name}</strong></td>${state.roles.map(r=>{
         const actual=roleSums[r]||0;
-        const req=((station.minStaff||{})[r]||0)*days;
+        const req=roleReq[r]||0;
         const cellCls=req>0?(actual>=req?'cell-ok':actual>=req*0.7?'cell-warn':'cell-danger'):'';
         return `<td class="${cellCls}">${actual}${req>0?` / ${req}`:''}</td>`;
       }).join('')}<td><strong>${sTotal}${totalRequired>0?` / ${totalRequired}`:''}</strong></td><td><span class="badge ${cls}">${pct}%</span></td></tr>`;
     }).join('')}${(()=>{
       const grandRoleSums={}; let grandTotal=0, grandRequired=0;
-      state.roles.forEach(r=>{ grandRoleSums[r]=0; });
+      const grandRoleRequired={};
+      state.roles.forEach(r=>{ grandRoleSums[r]=0; grandRoleRequired[r]=0; });
       visibleStations.forEach(station=>{
         const stEntries=entries.filter(e=>e.stationId===station.id);
-        const days=Math.max(stEntries.length,1);
+        const dates = stEntries.length ? stEntries.map(e=>e.date) : [today()];
         state.roles.forEach(r=>{
           const sum=stEntries.reduce((s,e)=>s+(e.counts[r]||0),0);
           grandRoleSums[r]=(grandRoleSums[r]||0)+sum;
           grandTotal+=sum;
+          const reqTotal=dates.reduce((s,d)=>s+(getStandard(station,d)[r]||0),0);
+          grandRoleRequired[r]=(grandRoleRequired[r]||0)+reqTotal;
+          grandRequired+=reqTotal;
         });
-        grandRequired+=state.roles.reduce((s,r)=>s+((station.minStaff||{})[r]||0)*days,0);
-      });
-      const grandRoleRequired={};
-      state.roles.forEach(r=>{ grandRoleRequired[r]=0; });
-      visibleStations.forEach(station=>{
-        const stEntries2=entries.filter(e=>e.stationId===station.id);
-        const days2=Math.max(stEntries2.length,1);
-        state.roles.forEach(r=>{ grandRoleRequired[r]+=(( station.minStaff||{})[r]||0)*days2; });
       });
       return `<tr style="border-top:2px solid var(--border);background:var(--bg-secondary)"><td><strong>סה"כ</strong></td>${state.roles.map(r=>{const req=grandRoleRequired[r]||0;const act=grandRoleSums[r]||0;const cls=req>0?(act>=req?'cell-ok':act>=req*0.7?'cell-warn':'cell-danger'):'';return `<td class="${cls}"><strong>${act}${req>0?` / ${req}`:''}</strong></td>`;}).join('')}<td><strong>${grandTotal}${grandRequired>0?` / ${grandRequired}`:''}</strong></td><td></td></tr>`;
     })()}</tbody></table>`;
@@ -787,7 +859,7 @@ function openEditEntry(entryId) {
   // Render role inputs
   const container = document.getElementById('editEntryRoles');
   container.innerHTML = state.roles.map(role => {
-    const min = station ? ((station.minStaff||{})[role]||0) : 0;
+    const min = station ? (getStandard(station, entry.date)[role]||0) : 0;
     const val = entry.counts[role] || 0;
     return `<div class="role-input-card">
       <div class="role-input-info">
@@ -856,10 +928,11 @@ function openStationDrilldown(stationData, entries, C) {
 
   const stEntries = entries.filter(e=>e.stationId===stationData.id);
   const days = stEntries.length || 1;
+  const drillDates = stEntries.length ? stEntries.map(e=>e.date) : [today()];
 
   const roleData = state.roles.map(role => {
     const avgActual = Math.round(stEntries.reduce((s,e)=>s+(e.counts[role]||0),0) / days);
-    const required = station ? ((station.minStaff||{})[role]||0) : 0;
+    const required = station ? Math.round(avgRequiredForRole([station], drillDates, role)) : 0;
     return { role, avgActual, required };
   }).filter(r => r.avgActual > 0 || r.required > 0);
 
@@ -1028,8 +1101,12 @@ function renderRoleInputs() {
   const date = document.getElementById('entryDate').value;
   const existing = state.entries.find(e=>e.stationId===stationId && e.date===date); // undefined if not found
   const existingNote = existing ? (existing.note || '') : '';
-  container.innerHTML = state.roles.map(role=>{
-    const min = station?((station.minStaff||{})[role]||0):0;
+  const special = isSpecialDay(date);
+  const specialBadge = special
+    ? `<div style="margin-bottom:10px;padding:8px 12px;border-radius:8px;background:rgba(232,197,71,0.15);border:1px solid #e8c547;color:var(--text);font-size:0.9rem">📅 התאריך הנבחר הוא סוף שבוע / חג — מוצג תקן סופ"ש/חג</div>`
+    : '';
+  container.innerHTML = specialBadge + state.roles.map(role=>{
+    const min = station?(getStandard(station,date)[role]||0):0;
     const val = existing !== undefined ? (existing.counts[role]||0) : min;
     return `<div class="role-input-card">
       <div class="role-input-info">
@@ -1134,7 +1211,7 @@ function renderHistoryTable() {
         <td><strong>${s?s.name:'?'}</strong></td>
         ${state.roles.map(r=>{
           const val=e.counts[r]||0;
-          const min=s?((s.minStaff||{})[r]||0):0;
+          const min=s?(getStandard(s,e.date)[r]||0):0;
           const ok=min===0||val>=min;
           return `<td style="color:${val===0?'var(--text3)':ok?'var(--text)':'var(--red)'}">${val}</td>`;
         }).join('')}
@@ -1167,11 +1244,16 @@ function renderStations() {
     <div class="stations-grid">${state.stations.map(s=>{
     const pills=state.roles.filter(r=>((s.minStaff||{})[r]||0)>0)
       .map(r=>`<span>${roleEmoji(r)} ${r}: ${s.minStaff[r]}</span>`).join('');
+    const specialPills=state.roles.filter(r=>((s.minStaffSpecial||{})[r]||0)>0)
+      .map(r=>`<span>${roleEmoji(r)} ${r}: ${s.minStaffSpecial[r]}</span>`).join('');
     const stationTotal = state.roles.reduce((sum,r)=>sum+((s.minStaff||{})[r]||0),0);
+    const stationTotalSpecial = state.roles.reduce((sum,r)=>sum+((s.minStaffSpecial||{})[r]||0),0);
     return `<div class="station-card">
       <div class="station-card-name">🏪 ${s.name}</div>
       <div class="station-roles-mini">${pills||'<span style="color:var(--text3)">לא הוגדרו מינימומים</span>'}</div>
-      <div class="station-total">סה״כ נדרש: <strong>${stationTotal}</strong></div>
+      <div class="station-total">סה״כ נדרש (ימי חול): <strong>${stationTotal}</strong></div>
+      <div class="station-roles-mini" style="margin-top:6px">🌙 סופ"ש/חג: ${specialPills||'<span style="color:var(--text3)">אין תקן נפרד</span>'}</div>
+      <div class="station-total">סה״כ נדרש (סופ"ש/חג): <strong>${stationTotalSpecial}</strong></div>
       <div class="station-card-actions">
         <button class="btn-icon" onclick="openStationModal('${s.id}')">✏ עריכה</button>
         <button class="btn-icon danger" onclick="deleteStation('${s.id}')">✕ מחק</button>
@@ -1192,6 +1274,14 @@ function openStationModal(stationId) {
     return `<label class="roles-min-label">${roleEmoji(role)} ${role}</label>
       <input class="roles-min-input" type="number" min="0" max="99" value="${min}" data-role="${role}" />`;
   }).join('')}</div>`;
+  const modalRolesMinSpecial = document.getElementById('modalRolesMinSpecial');
+  if (modalRolesMinSpecial) {
+    modalRolesMinSpecial.innerHTML=`<div class="roles-min-grid">${state.roles.map(role=>{
+      const min=station?((station.minStaffSpecial||{})[role]||0):0;
+      return `<label class="roles-min-label">${roleEmoji(role)} ${role}</label>
+        <input class="roles-min-special-input" type="number" min="0" max="99" value="${min}" data-role="${role}" />`;
+    }).join('')}</div>`;
+  }
   document.getElementById('stationModal').style.display='flex';
 }
 
@@ -1200,8 +1290,10 @@ document.getElementById('btnSaveStation').addEventListener('click',()=>{
   if(!name) return alert('יש להזין שם תחנה');
   const minStaff={};
   document.querySelectorAll('.roles-min-input').forEach(input=>{ minStaff[input.dataset.role]=parseInt(input.value)||0; });
-  if(editingStationId){ const s=getStation(editingStationId); s.name=name; s.minStaff=minStaff; }
-  else state.stations.push({id:'s'+Date.now(),name,minStaff});
+  const minStaffSpecial={};
+  document.querySelectorAll('.roles-min-special-input').forEach(input=>{ minStaffSpecial[input.dataset.role]=parseInt(input.value)||0; });
+  if(editingStationId){ const s=getStation(editingStationId); s.name=name; s.minStaff=minStaff; s.minStaffSpecial=minStaffSpecial; }
+  else state.stations.push({id:'s'+Date.now(),name,minStaff,minStaffSpecial});
   saveState(); closeStationModal(); renderStations();
 });
 
@@ -1556,13 +1648,15 @@ function generatePDF() {
     if (reportType === 'summary') {
       const summaryRows = stations.map(station => {
         const stE  = entries.filter(e => e.stationId === station.id);
-        const days = [...new Set(stE.map(e => e.date))].length || 1;
+        const dates = [...new Set(stE.map(e => e.date))];
+        const days = dates.length || 1;
         const tot  = stE.reduce((s,e) => s + Object.values(e.counts||{}).reduce((a,b)=>a+b,0), 0);
         const avg  = (tot / days).toFixed(1);
-        const req  = Object.values(station.minStaff||{}).reduce((a,b)=>a+b, 0);
+        const req  = avgRequiredTotal([station], dates);
+        const reqStr = req>0 ? req.toFixed(1) : '—';
         const gap  = parseFloat(avg) - req;
         const col  = gap < 0 ? '#c00' : '#1a7a1a';
-        return '<tr><td>' + station.name + '</td><td>' + days + '</td><td>' + (req||'—') + '</td><td>' + avg + '</td>'
+        return '<tr><td>' + station.name + '</td><td>' + days + '</td><td>' + reqStr + '</td><td>' + avg + '</td>'
           + '<td style="color:' + col + ';font-weight:bold">' + (gap>=0?'+':'') + gap.toFixed(1) + '</td>'
           + '<td style="color:' + col + ';font-weight:bold">' + (gap<0?'חסר':gap===0?'מדויק':'עודף') + '</td></tr>';
       }).join('');
@@ -1572,16 +1666,17 @@ function generatePDF() {
 
       stations.forEach(function(station) {
         const stE  = entries.filter(e => e.stationId === station.id);
-        const days = [...new Set(stE.map(e => e.date))].length || 1;
-        const min  = station.minStaff || {};
+        const dates = [...new Set(stE.map(e => e.date))];
+        const days = dates.length || 1;
         const roleRows = state.roles.map(function(role) {
-          const req = min[role] || 0;
+          const req = avgRequiredForRole([station], dates, role);
           const tot = stE.reduce((s,e) => s + (e.counts[role]||0), 0);
           const avg = (tot / days).toFixed(1);
           const gap = parseFloat(avg) - req;
           if (req === 0 && parseFloat(avg) === 0) return '';
           const col = gap < 0 ? '#c00' : gap === 0 ? '#1a7a1a' : '#1a50a0';
-          return '<tr><td>' + role + '</td><td>' + (req||'—') + '</td><td>' + avg + '</td>'
+          const reqStr = req>0 ? req.toFixed(1) : '—';
+          return '<tr><td>' + role + '</td><td>' + reqStr + '</td><td>' + avg + '</td>'
             + '<td style="color:' + col + ';font-weight:bold">' + (gap>=0?'+':'') + gap.toFixed(1) + '</td>'
             + '<td style="color:' + col + ';font-weight:bold">' + (req===0?'—':gap<0?'חסר':gap===0?'מדויק':'עודף') + '</td></tr>';
         }).filter(Boolean).join('');
@@ -1604,15 +1699,17 @@ function generatePDF() {
         + '<tbody>' + dRows + '</tbody></table>';
 
     } else if (reportType === 'roles') {
-      const days = [...new Set(entries.map(e=>e.date))].length || 1;
+      const rDates = [...new Set(entries.map(e=>e.date))];
+      const days = rDates.length || 1;
       const rRows = state.roles.map(function(role) {
         const tot = entries.reduce((s,e) => s + (e.counts[role]||0), 0);
         if (!tot) return '';
         const avg = (tot / days).toFixed(1);
-        const req = stations.reduce((s,st) => s + ((st.minStaff||{})[role]||0), 0);
+        const req = avgRequiredForRole(stations, rDates, role);
+        const reqStr = req>0 ? req.toFixed(1) : '—';
         const gap = parseFloat(avg) - req;
         const col = gap < 0 ? '#c00' : gap === 0 ? '#1a7a1a' : '#1a50a0';
-        return '<tr><td>' + role + '</td><td>' + tot + '</td><td>' + avg + '</td><td>' + (req||'—') + '</td>'
+        return '<tr><td>' + role + '</td><td>' + tot + '</td><td>' + avg + '</td><td>' + reqStr + '</td>'
           + '<td style="color:' + col + ';font-weight:bold">' + (gap>=0?'+':'') + gap.toFixed(1) + '</td></tr>';
       }).filter(Boolean).join('');
       body += '<h2 class="section-title">פירוט לפי תפקיד</h2>'
