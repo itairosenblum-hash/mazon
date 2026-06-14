@@ -482,6 +482,24 @@ function periodDateStrings(fromDate, toDate) {
   return out;
 }
 
+// בסופ"ש/חג: אם לא דווח בפועל, מניחים שהמצב תואם את תקן סופ"ש/חג (רשומה וירטואלית)
+function injectVirtualEntries(entries, stations, dates) {
+  if (!dates || !dates.length || !stations || !stations.length) return entries;
+  const keys = new Set(entries.map(e=>e.stationId+'|'+e.date));
+  const virtual = [];
+  stations.forEach(station=>{
+    dates.forEach(date=>{
+      if (!isSpecialDay(date)) return;
+      if (keys.has(station.id+'|'+date)) return;
+      const std = getStandard(station, date);
+      if (state.roles.some(r=>(std[r]||0)>0)) {
+        virtual.push({ id:'virtual-'+station.id+'-'+date, stationId: station.id, date, counts: {...std}, virtual:true });
+      }
+    });
+  });
+  return virtual.length ? entries.concat(virtual) : entries;
+}
+
 function allowedStations() {
   if (isAdmin()) return state.stations;
   if (!currentUser) return [];
@@ -590,11 +608,26 @@ function renderDashboard() {
     ? allowedStations().filter(s => s.id === selectedStationId)
     : allowedStations();
 
-  const totalPresence = entries.reduce((s,e) => s + totalForEntry(e), 0);
-  const avgPerDay = (totalPresence / period).toFixed(1);
+  const periodDatesArr = periodDateStrings(fromDate, toDate);
   const stationsActive = new Set(entries.map(e => e.stationId)).size;
 
-  const periodDatesArr = periodDateStrings(fromDate, toDate);
+  // בסופ"ש/חג ללא דיווח - מניחים בפועל = תקן סופ"ש/חג
+  entries = injectVirtualEntries(entries, visibleStations, periodDatesArr);
+
+  const hasSpecialStandard = visibleStations.some(s => state.roles.some(r => ((s.minStaffSpecial||{})[r]||0) > 0));
+  const weekendNote = document.getElementById('weekendAutoNote');
+  if (weekendNote) {
+    if (hasSpecialStandard) {
+      weekendNote.style.display = '';
+      weekendNote.textContent = 'ℹ️ בימי שישי, שבת וחגים ללא דיווח בפועל, הנתונים מוצגים אוטומטית לפי תקן סופ"ש/חג שהוגדר לתחנה.';
+    } else {
+      weekendNote.style.display = 'none';
+    }
+  }
+
+  const totalPresence = entries.reduce((s,e) => s + totalForEntry(e), 0);
+  const avgPerDay = (totalPresence / period).toFixed(1);
+
   const totalRequiredRaw = avgRequiredTotal(visibleStations, periodDatesArr);
   const totalRequired = Math.round(totalRequiredRaw);
   const dailyPresence = period > 0 ? totalPresence / period : 0;
@@ -769,13 +802,17 @@ function renderDashboard() {
   }
   // Use all entries in the trend window (not just the selected period)
   // but filtered by station and user permissions
-  const allFilteredEntries = state.entries
+  let allFilteredEntries = state.entries
     .filter(e=>{ if(!isAdmin()) return currentUser.stationIds.includes(e.stationId); return true; })
     .filter(e=> selectedStationId ? e.stationId===selectedStationId : true);
 
   const trendStations = selectedStationId
     ? visibleStations.filter(s=>s.id===selectedStationId)
     : visibleStations;
+
+  // בסופ"ש/חג ללא דיווח - מניחים בפועל = תקן סופ"ש/חג
+  allFilteredEntries = injectVirtualEntries(allFilteredEntries, trendStations, daysArr);
+
   const trendData = daysArr.map(date=>{
     const dayTotal = allFilteredEntries.filter(e=>e.date===date).reduce((s,e)=>s+totalForEntry(e),0);
     const dayRequired = trendStations.reduce((s,station)=>s+requiredTotalForDate(station,date),0);
@@ -1644,6 +1681,9 @@ function generatePDF() {
     const stations = stationFilter
       ? state.stations.filter(s => s.id === stationFilter)
       : state.stations;
+
+    // בסופ"ש/חג ללא דיווח - מניחים בפועל = תקן סופ"ש/חג
+    entries = injectVirtualEntries(entries, stations, periodDateStrings(from, to));
 
     const typeLabel = {summary:'סיכום לפי תחנה', daily:'פירוט יומי', roles:'פירוט לפי תפקיד'}[reportType] || '';
 
