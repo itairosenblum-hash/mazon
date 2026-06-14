@@ -1306,6 +1306,13 @@ tr:hover td { background: var(--bg3); }
   line-height: 38px;
   height: 38px;
 }
+.date-range-label, .tb-date, .tb-row3 .tb-date {
+  cursor: pointer;
+}
+.date-range-label:hover, .tb-date:hover, .tb-row3 .tb-date:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
 
 @media (max-width: 768px) {
   .dashboard-filters { width: 100%; }
