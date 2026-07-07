@@ -121,7 +121,7 @@ const SESSION_KEY = 'catering_session';
 // ─────────────────────────────────────────────
 // GOOGLE SHEETS SYNC (JSONP — no CORS issues)
 // ─────────────────────────────────────────────
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyHAMw56oIoMzJQdGlRDSComslz3IB7uHARUXCwcg1KmesC98l2qRYMUC_8DdtyZN2DLQ/exec';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxGbw-3lCORvqqt3GeAeBbGjNxJWKEXRfAeSSN8Csk91QKecLFmGlk7rZfoOkADMPmiIg/exec';
 const SYNC_KEY = 'mzn_K7q2xFw9pT4dR8sL';
 let syncTimeout = null;
 let serverV2 = null; // null=לא ידוע, true=Apps Script חדש (מיזוג+אימות), false=ישן
