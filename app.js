@@ -122,7 +122,22 @@ const SESSION_KEY = 'catering_session';
 // GOOGLE SHEETS SYNC (JSONP — no CORS issues)
 // ─────────────────────────────────────────────
 const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyHAMw56oIoMzJQdGlRDSComslz3IB7uHARUXCwcg1KmesC98l2qRYMUC_8DdtyZN2DLQ/exec';
+const SYNC_KEY = 'mzn_K7q2xFw9pT4dR8sL';
 let syncTimeout = null;
+let serverV2 = null; // null=לא ידוע, true=Apps Script חדש (מיזוג+אימות), false=ישן
+
+// הגנת XSS + תווים מיוחדים בשמות שמוצגים ב-HTML
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function checkServerV2() {
+  try {
+    const r = await jsonpGet(SHEETS_URL + '?action=confirm&key=' + SYNC_KEY);
+    serverV2 = !!(r && !r.error && ('lastSaveId' in r));
+  } catch(e) { serverV2 = false; }
+}
 
 function scheduleSave() {
   clearTimeout(syncTimeout);
@@ -157,19 +172,37 @@ function jsonpGet(url) {
 
 async function syncToSheets() {
   setSyncStatus('saving');
+  if (serverV2 === null) await checkServerV2();
+  if (!serverV2) {
+    // Apps Script ישן — התנהגות קודמת (ללא אימות)
+    try {
+      await fetch(SHEETS_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(state) });
+      setSyncStatus('saved');
+    } catch(e) { console.warn('Sync save error:', e); setSyncStatus('error'); }
+    return;
+  }
+  const saveId = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
   try {
-    // Use no-cors POST via form submission trick via fetch with mode no-cors
     await fetch(SHEETS_URL, {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify(state)
+      body: JSON.stringify({ key: SYNC_KEY, saveId, state })
     });
-    setSyncStatus('saved');
   } catch(e) {
     console.warn('Sync save error:', e);
     setSyncStatus('error');
+    return;
   }
+  // אימות אמיתי: בודקים שהשרת אכן קלט את השמירה הזו
+  for (let i = 0; i < 3; i++) {
+    try {
+      const res = await jsonpGet(SHEETS_URL + '?action=confirm&key=' + SYNC_KEY);
+      if (res && res.lastSaveId === saveId) { setSyncStatus('saved'); return; }
+    } catch(e) {}
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  setSyncStatus('error');
 }
 
 function saveState() {
@@ -205,14 +238,21 @@ function loadState() {
 async function loadFromSheets() {
   setSyncStatus('saving');
   try {
-    const data = await jsonpGet(SHEETS_URL);
+    const data = await jsonpGet(SHEETS_URL + '?action=load&key=' + SYNC_KEY);
     if (data && data.roles && data.stations) {
       if (!data.users || data.users.length === 0) {
         data.users = state.users && state.users.length ? state.users : defaultState().users;
       }
+      // מיזוג ברמת רשומה: רשומה עם editedAt חדש יותר מנצחת, מקומי גובר בשוויון
+      const merged = mergeEntries(state.entries, data.entries);
+      const remoteJson = JSON.stringify(sortByKey(data.entries || []));
+      const mergedJson = JSON.stringify(sortByKey(merged));
       state = data;
+      state.entries = merged;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (mergedJson !== remoteJson) scheduleSave(); // יש רשומות מקומיות שהשרת עוד לא מכיר — דוחפים חזרה
       setSyncStatus('saved');
+      if (serverV2 !== true) checkServerV2();
       return true;
     }
   } catch(e) {
@@ -220,6 +260,33 @@ async function loadFromSheets() {
   }
   setSyncStatus('idle');
   return false;
+}
+
+// ─── מיזוג רשומות נוכחות (מפתח: תחנה+תאריך, מנצח ה-editedAt החדש) ───
+function entryTs(e) {
+  if (!e || !e.editedAt) return 0;
+  const t = Date.parse(e.editedAt);
+  return isNaN(t) ? 0 : t;
+}
+function sortByKey(arr) {
+  return [...arr].sort((a,b) => (a.stationId+'|'+a.date).localeCompare(b.stationId+'|'+b.date));
+}
+function mergeEntries(localArr, remoteArr) {
+  const map = new Map();
+  (remoteArr || []).forEach(e => { if (e && e.stationId && e.date) map.set(e.stationId + '|' + e.date, e); });
+  (localArr || []).forEach(e => {
+    if (!e || !e.stationId || !e.date) return;
+    const k = e.stationId + '|' + e.date;
+    const r = map.get(k);
+    if (!r || entryTs(e) >= entryTs(r)) map.set(k, e);
+  });
+  // ניקוי רשומות "מחוקות" (tombstones) בנות יותר מ-60 יום
+  const cutoff = Date.now() - 60 * 24 * 3600 * 1000;
+  return [...map.values()].filter(e => !(e.deleted && entryTs(e) > 0 && entryTs(e) < cutoff));
+}
+// רשומות פעילות בלבד (ללא מחוקות) — לשימוש בכל התצוגות
+function activeEntries() {
+  return (state.entries || []).filter(e => !e.deleted);
 }
 
 // ─────────────────────────────────────────────
@@ -455,6 +522,29 @@ function refreshHolidaysCache() {
 }
 refreshHolidaysCache();
 
+function renderHolidayCacheWarning() {
+  let el = document.getElementById('holidayCacheWarn');
+  let fetchedAt = 0;
+  try {
+    const raw = localStorage.getItem(HOLIDAYS_CACHE_KEY);
+    if (raw) fetchedAt = (JSON.parse(raw).fetchedAt || 0);
+  } catch(e) {}
+  const stale = !fetchedAt || (Date.now() - fetchedAt) > 90 * 24 * 3600 * 1000;
+  const show = isAdmin() && stale;
+  if (!show) { if (el) el.style.display = 'none'; return; }
+  if (!el) {
+    const anchor = document.getElementById('weekendAutoNote');
+    if (!anchor || !anchor.parentNode) return;
+    el = document.createElement('div');
+    el.id = 'holidayCacheWarn';
+    el.style.cssText = 'margin:8px 0;padding:8px 12px;border-radius:8px;background:rgba(224,122,58,0.12);border:1px solid #e07a3a;color:var(--text);font-size:0.88rem';
+    anchor.parentNode.insertBefore(el, anchor);
+  }
+  el.style.display = '';
+  const dateTxt = fetchedAt ? new Date(fetchedAt).toLocaleDateString('he-IL') : 'אף פעם';
+  el.textContent = '⚠ רשימת החגים לא התעדכנה מאז ' + dateTxt + ' — ייתכן שחגים עתידיים לא יזוהו כתקן סופ"ש/חג.';
+}
+
 function isWeekendDate(dateStr) {
   if (!dateStr) return false;
   const dow = new Date(dateStr+'T00:00:00').getDay();
@@ -535,7 +625,7 @@ function getPeriodRange(days) {
 
 function entriesInPeriod(days) {
   const { from, to } = getPeriodRange(days);
-  let entries = state.entries.filter(e => {
+  let entries = activeEntries().filter(e => {
     const d = new Date(e.date);
     return d >= from && d <= to;
   });
@@ -590,7 +680,7 @@ function renderDashboard() {
   if (stationSel) {
     const currentVal = stationSel.value;
     const stOpts = '<option value="">כל התחנות</option>' +
-      allowedStations().map(s=>`<option value="${s.id}"${s.id===currentVal?' selected':''}>${s.name}</option>`).join('');
+      allowedStations().map(s=>`<option value="${s.id}"${s.id===currentVal?' selected':''}>${escapeHtml(s.name)}</option>`).join('');
     stationSel.innerHTML = stOpts;
     const tbSt=document.getElementById('tbStation');
     if(tbSt){tbSt.innerHTML=stOpts;tbSt.value=currentVal;}
@@ -638,6 +728,9 @@ function renderDashboard() {
       weekendNote.style.display = 'none';
     }
   }
+
+  // התראת אדמין: מטמון החגים לא התעדכן מעל 3 חודשים
+  renderHolidayCacheWarning();
 
   const totalPresence = entries.reduce((s,e) => s + totalForEntry(e), 0);
   const avgPerDay = (totalPresence / period).toFixed(1);
@@ -816,7 +909,7 @@ function renderDashboard() {
   }
   // Use all entries in the trend window (not just the selected period)
   // but filtered by station and user permissions
-  let allFilteredEntries = state.entries
+  let allFilteredEntries = activeEntries()
     .filter(e=>{ if(!isAdmin()) return currentUser.stationIds.includes(e.stationId); return true; })
     .filter(e=> selectedStationId ? e.stationId===selectedStationId : true);
 
@@ -867,7 +960,7 @@ function renderDashboard() {
       const pct=sR?Math.round((sC/sR)*100):100;
       const cls=pct>=90?'badge-ok':pct>=70?'badge-warn':'badge-danger';
       const totalRequired=state.roles.reduce((s,r)=>s+(roleReq[r]||0),0);
-      return `<tr><td><strong>${station.name}</strong></td>${state.roles.map(r=>{
+      return `<tr><td><strong>${escapeHtml(station.name)}</strong></td>${state.roles.map(r=>{
         const actual=roleSums[r]||0;
         const req=roleReq[r]||0;
         const cellCls=req>0?(actual>=req?'cell-ok':actual>=req*0.7?'cell-warn':'cell-danger'):'';
@@ -955,7 +1048,9 @@ document.getElementById('btnSaveEditEntry').addEventListener('click', () => {
 document.getElementById('btnDeleteEntry').addEventListener('click', () => {
   const entryId = document.getElementById('editEntryId').value;
   if (!confirm('למחוק הזנה זו לצמיתות?')) return;
-  state.entries = state.entries.filter(e => e.id !== entryId);
+  // סימון כמחוקה (tombstone) במקום הסרה — כדי שהמחיקה תתפשט בסנכרון ולא "תקום לתחייה"
+  const delEntry = state.entries.find(e => e.id === entryId);
+  if (delEntry) { delEntry.deleted = true; delEntry.editedBy = currentUser.id; delEntry.editedAt = new Date().toISOString(); }
   saveState();
   closeEditEntryModal();
   renderHistoryTable();
@@ -1095,7 +1190,7 @@ function renderDashboardNotes(entries, period) {
         <span class="dashboard-note-date">${formatDate(e.date)}</span>
         ${entryUser ? `<span class="dashboard-note-user">👤 ${entryUser.name}</span>` : ''}
       </div>
-      <div class="dashboard-note-text">💬 ${e.note}</div>
+      <div class="dashboard-note-text">💬 ${escapeHtml(e.note)}</div>
     </div>`;
   }).join('');
 
@@ -1167,7 +1262,7 @@ function renderEntry() {
   } else {
     stationSel.disabled = false;
     stationSel.innerHTML = '<option value="">— בחר תחנה —</option>' +
-      allowed.map(s=>`<option value="${s.id}"${s.id===prevVal?' selected':''}>${s.name}</option>`).join('');
+      allowed.map(s=>`<option value="${s.id}"${s.id===prevVal?' selected':''}>${escapeHtml(s.name)}</option>`).join('');
   }
 
   renderRoleInputs();
@@ -1183,7 +1278,7 @@ function renderRoleInputs() {
     return;
   }
   const date = document.getElementById('entryDate').value;
-  const existing = state.entries.find(e=>e.stationId===stationId && e.date===date); // undefined if not found
+  const existing = state.entries.find(e=>e.stationId===stationId && e.date===date && !e.deleted); // undefined if not found
   const existingNote = existing ? (existing.note || '') : '';
   const special = isSpecialDay(date);
   const specialBadge = special
@@ -1226,7 +1321,7 @@ document.getElementById('btnSaveEntry').addEventListener('click', ()=>{
   });
   const note = document.getElementById('entryNote') ? document.getElementById('entryNote').value.trim() : '';
   state.entries = state.entries.filter(e=>!(e.stationId===stationId && e.date===date));
-  state.entries.push({ id:'e'+Date.now(), date, stationId, counts, note, byUser: currentUser.id });
+  state.entries.push({ id:'e'+Date.now(), date, stationId, counts, note, byUser: currentUser.id, editedAt: new Date().toISOString() });
   saveState();
   showMsg('saveMsg','✓ הנוכחות נשמרה בהצלחה');
   renderRecentEntries();
@@ -1241,8 +1336,8 @@ function showMsg(id,msg,color='#52c07a') {
 function renderRecentEntries() {
   const allowed = allowedStations().map(s => s.id);
   const filtered = isAdmin()
-    ? state.entries
-    : state.entries.filter(e => allowed.includes(e.stationId));
+    ? activeEntries()
+    : activeEntries().filter(e => allowed.includes(e.stationId));
   const sorted = [...filtered].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
   const container=document.getElementById('recentEntries');
   if(!sorted.length){container.innerHTML='<div class="empty-state"><span class="emoji">📭</span>אין הזנות עדיין</div>';return;}
@@ -1255,7 +1350,7 @@ function renderRecentEntries() {
       <div style="flex:1">
         <div class="recent-entry-station">${s?s.name:'?'}</div>
         <div class="recent-entry-info">${formatDate(e.date)} • סה"כ: ${totalForEntry(e)}${entryUser?' • '+entryUser.name:''}</div>
-        ${e.note?`<div class="recent-entry-note">💬 ${e.note}</div>`:''}
+        ${e.note?`<div class="recent-entry-note">💬 ${escapeHtml(e.note)}</div>`:''}
       </div>
       <div class="recent-roles-pills">${pills}</div>
     </div>`;
@@ -1270,7 +1365,7 @@ function renderHistory() {
   const prevSt=stationSel.value;
   const allowed=allowedStations();
   stationSel.innerHTML='<option value="">כל התחנות</option>'+
-    allowed.map(s=>`<option value="${s.id}"${s.id===prevSt?' selected':''}>${s.name}</option>`).join('');
+    allowed.map(s=>`<option value="${s.id}"${s.id===prevSt?' selected':''}>${escapeHtml(s.name)}</option>`).join('');
   const monthInput=document.getElementById('historyMonth');
   if(!monthInput.value){const now=new Date();monthInput.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;}
   renderHistoryTable();
@@ -1279,7 +1374,7 @@ function renderHistory() {
 function renderHistoryTable() {
   const stationId=document.getElementById('historyStation').value;
   const month=document.getElementById('historyMonth').value;
-  let filtered=[...state.entries];
+  let filtered=[...activeEntries()];
   if(!isAdmin()) filtered=filtered.filter(e=>currentUser.stationIds.includes(e.stationId));
   if(stationId) filtered=filtered.filter(e=>e.stationId===stationId);
   if(month) filtered=filtered.filter(e=>e.date.startsWith(month));
@@ -1300,7 +1395,7 @@ function renderHistoryTable() {
           return `<td style="color:${val===0?'var(--text3)':ok?'var(--text)':'var(--red)'}">${val}</td>`;
         }).join('')}
         <td><strong>${totalForEntry(e)}</strong></td>
-        <td class="history-note-cell">${e.note?`<span class="history-note">💬 ${e.note}</span>`:''}</td>
+        <td class="history-note-cell">${e.note?`<span class="history-note">💬 ${escapeHtml(e.note)}</span>`:''}</td>
         ${isAdmin()?`<td><button class="btn-icon edit-entry-btn" onclick="openEditEntry('${e.id}')">✏ עריכה</button></td>`:'<td></td>'}
       </tr>`;
     }).join('')}</tbody></table></div>`;
@@ -1333,7 +1428,7 @@ function renderStations() {
     const stationTotal = state.roles.reduce((sum,r)=>sum+((s.minStaff||{})[r]||0),0);
     const stationTotalSpecial = state.roles.reduce((sum,r)=>sum+((s.minStaffSpecial||{})[r]||0),0);
     return `<div class="station-card">
-      <div class="station-card-name">🏪 ${s.name}</div>
+      <div class="station-card-name">🏪 ${escapeHtml(s.name)}</div>
       <div class="station-roles-mini">${pills||'<span style="color:var(--text3)">לא הוגדרו מינימומים</span>'}</div>
       <div class="station-total">סה״כ נדרש (ימי חול): <strong>${stationTotal}</strong></div>
       <div class="station-roles-mini" style="margin-top:6px">🌙 סופ"ש/חג: ${specialPills||'<span style="color:var(--text3)">אין תקן נפרד</span>'}</div>
@@ -1429,7 +1524,7 @@ function renderUsers() {
       ? '<span class="badge badge-ok">כל התחנות</span>'
       : (u.stationIds||[]).map(sid => {
           const s = getStation(sid);
-          return s ? `<span class="station-tag">${s.name}</span>` : '';
+          return s ? `<span class="station-tag">${escapeHtml(s.name)}</span>` : '';
         }).join('') || '<span style="color:var(--text3)">ללא תחנה</span>';
     const phoneDisplay = u.phone ? `<div class="user-phone">📱 ${u.phone}</div>` : '';
     const waButtons = u.phone ? `
@@ -1440,7 +1535,7 @@ function renderUsers() {
       <div class="user-card-left">
         <div class="user-avatar">${u.name[0]}</div>
         <div>
-          <div class="user-name">${u.name} ${u.role==='admin'?'👑':''}</div>
+          <div class="user-name">${escapeHtml(u.name)} ${u.role==='admin'?'👑':''}</div>
           <div class="user-username">@${u.username}</div>
           ${phoneDisplay}
           <div class="user-stations">${stationNames}</div>
@@ -1479,7 +1574,7 @@ function renderUserStationCheckboxes(user) {
   container.innerHTML = state.stations.map(s => `
     <label class="station-checkbox">
       <input type="checkbox" value="${s.id}" ${selectedIds.includes(s.id)?'checked':''} />
-      ${s.name}
+      ${escapeHtml(s.name)}
     </label>`).join('');
 }
 
@@ -1582,7 +1677,9 @@ document.getElementById('importFile').addEventListener('change',e=>{
 document.getElementById('btnReset').addEventListener('click',()=>{
   if(!confirm('למחוק את כל ההזנות? משתמשים, תחנות ותקנים לא יימחקו.')) return;
   if(!confirm('בטוח? פעולה זו אינה הפיכה.')) return;
-  state.entries = []; saveState(); renderPage(currentPage); alert('ההזנות נמחקו.');
+  const _now = new Date().toISOString();
+  state.entries = state.entries.map(e => e.deleted ? e : Object.assign({}, e, { deleted: true, editedAt: _now, editedBy: currentUser.id }));
+  saveState(); renderPage(currentPage); alert('ההזנות נמחקו.');
 });
 
 // ─────────────────────────────────────────────
@@ -1661,7 +1758,7 @@ function renderReports() {
   if (!sel) return;
   const stations = (state && state.stations) ? state.stations : [];
   sel.innerHTML = '<option value="">כל התחנות</option>' +
-    stations.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    stations.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
 
   // Custom date range toggle
   const periodSel = document.getElementById('reportPeriod');
@@ -1715,7 +1812,7 @@ function generatePDF() {
     const fromStr = from.toLocaleDateString('he-IL');
     const toStr   = to.toLocaleDateString('he-IL');
 
-    let entries = state.entries.filter(e => {
+    let entries = activeEntries().filter(e => {
       const d = new Date(e.date);
       return d >= from && d <= to;
     });
@@ -1919,7 +2016,7 @@ function renderMsgRecipients() {
       <input type="checkbox" class="msg-recipient-cb" value="${u.id}" ${hasPhone ? 'checked' : 'disabled'} />
       <div class="msg-recipient-avatar">${u.name[0]}</div>
       <div class="msg-recipient-info">
-        <div class="msg-recipient-name">${u.name}</div>
+        <div class="msg-recipient-name">${escapeHtml(u.name)}</div>
         <div class="msg-recipient-sub">${stationNames} ${hasPhone ? '· 📱 '+u.phone : '· <span style="color:var(--orange)">⚠️ ללא טלפון</span>'}</div>
       </div>
     </label>`;
