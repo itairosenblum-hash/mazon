@@ -2,9 +2,14 @@
 window.onerror = function(msg, src, line, col, err) {
   var s = document.getElementById('loadingSplash');
   if (s) s.style.display = 'none';
-  var ls = document.getElementById('loginScreen');
-  if (ls) ls.style.display = 'flex';
-  console.error('App error:', msg, 'line:', line);
+  // אם המשתמש כבר בתוך האפליקציה — לא זורקים אותו למסך כניסה בגלל שגיאה בודדת
+  var shell = document.getElementById('appShell');
+  var inApp = shell && shell.style.display !== 'none';
+  if (!inApp) {
+    var ls = document.getElementById('loginScreen');
+    if (ls) ls.style.display = 'flex';
+  }
+  console.error('App error:', msg, 'line:', line, err);
   return false;
 };
 
@@ -158,13 +163,17 @@ function setSyncStatus(status) {
 // JSONP helper — bypasses CORS
 function jsonpGet(url) {
   return new Promise((resolve, reject) => {
-    const cbName = '_jsonp_' + Date.now();
+    // רכיב אקראי מונע התנגשות בין שתי קריאות באותה מילישנייה (Date.now() לבדו לא ייחודי)
+    const cbName = '_jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
     const script = document.createElement('script');
     let settled = false;
-    const cleanup = () => { delete window[cbName]; if (script.parentNode) script.parentNode.removeChild(script); };
-    const timer = setTimeout(() => { if (settled) return; settled = true; cleanup(); reject(new Error('timeout')); }, 4000);
-    window[cbName] = (data) => { if (settled) return; settled = true; clearTimeout(timer); cleanup(); resolve(data); };
-    script.onerror = () => { if (settled) return; settled = true; clearTimeout(timer); cleanup(); reject(new Error('script error')); };
+    const removeScript = () => { if (script.parentNode) script.parentNode.removeChild(script); };
+    // בכישלון/timeout: משאירים callback no-op שמנקה את עצמו, כדי שתשובה איטית שמגיעה מאוחר
+    // לא תזרוק ReferenceError חוצה-מקור (שהיה מפיל את window.onerror ומציג את מסך הכניסה)
+    const disarm = () => { window[cbName] = function(){ try { delete window[cbName]; } catch(e){} }; };
+    const timer = setTimeout(() => { if (settled) return; settled = true; disarm(); removeScript(); reject(new Error('timeout')); }, 8000);
+    window[cbName] = (data) => { if (settled) return; settled = true; clearTimeout(timer); try { delete window[cbName]; } catch(e){} removeScript(); resolve(data); };
+    script.onerror = () => { if (settled) return; settled = true; clearTimeout(timer); disarm(); removeScript(); reject(new Error('script error')); };
     script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName + '&t=' + Date.now();
     document.head.appendChild(script);
   });
@@ -450,14 +459,18 @@ document.querySelectorAll('.nav-link').forEach(link => {
 // RENDER DISPATCHER
 // ─────────────────────────────────────────────
 function renderPage(page) {
-  if (page === 'dashboard') renderDashboard();
-  if (page === 'entry')     renderEntry();
-  if (page === 'history')   renderHistory();
-  if (page === 'stations')  renderStations();
-  if (page === 'settings')  renderSettings();
-  if (page === 'users')     renderUsers();
-  if (page === 'reports')   renderReports();
-  if (page === 'messages')  renderMessages();
+  try {
+    if (page === 'dashboard') renderDashboard();
+    if (page === 'entry')     renderEntry();
+    if (page === 'history')   renderHistory();
+    if (page === 'stations')  renderStations();
+    if (page === 'settings')  renderSettings();
+    if (page === 'users')     renderUsers();
+    if (page === 'reports')   renderReports();
+    if (page === 'messages')  renderMessages();
+  } catch (e) {
+    console.error('renderPage error [' + page + ']:', e);
+  }
 }
 
 // ─────────────────────────────────────────────
