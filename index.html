@@ -544,8 +544,8 @@ function togglePasswordVisibility() {
   else { input.type = 'password'; btn.textContent = '👁'; }
 }
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="app.js?v=20260721a"></script>
+<script async src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" onload="window.dispatchEvent(new Event('chartjs-ready'))"></script>
+<script defer src="app.js?v=20260721a"></script>
 
 </body>
 </html>

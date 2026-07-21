@@ -791,7 +791,7 @@ function renderDashboard() {
   });
 
   destroyChart(chartStation);
-  chartStation = new Chart(document.getElementById('chartByStation'),{
+  chartStation = safeChart(document.getElementById('chartByStation'),{
     type:'bar',
     data:{
       labels: stationTotals.map(s=>s.name),
@@ -865,7 +865,7 @@ function renderDashboard() {
   if (roleWrap) roleWrap.style.height = roleChartH + 'px';
 
   destroyChart(chartRole);
-  chartRole = new Chart(document.getElementById('chartByRole'),{
+  chartRole = safeChart(document.getElementById('chartByRole'),{
     type:'bar',
     data:{
       labels: roleTotals.map(r=>r.emoji+' '+r.role),
@@ -949,7 +949,7 @@ function renderDashboard() {
   });
   const maxTicks = trendDays <= 7 ? trendDays : trendDays <= 30 ? 10 : 12;
   destroyChart(chartTrend);
-  chartTrend = new Chart(document.getElementById('chartTrend'),{
+  chartTrend = safeChart(document.getElementById('chartTrend'),{
     type:'line',
     data:{ labels:daysArr.map(d=>formatDate(d)), datasets:[{
       label:'אחוז עמידה', data:trendData.map(d=>d.pct),
@@ -1116,7 +1116,7 @@ function openStationDrilldown(stationData, entries, C) {
 
   destroyChart(drillChart);
   const canvas = document.getElementById('drilldownChart');
-  drillChart = new Chart(canvas, {
+  drillChart = safeChart(canvas, {
     type: 'bar',
     data: {
       labels: roleData.map(r => roleEmoji(r.role) + ' ' + r.role),
@@ -1219,6 +1219,8 @@ function renderDashboardNotes(entries, period) {
 
 
 function destroyChart(chart) { if(chart){try{chart.destroy();}catch(e){}} }
+// יוצר גרף רק אם Chart.js כבר נטען — מאפשר לדשבורד לצייר מספרים/טבלאות מיד בלי להמתין לספרייה
+function safeChart(el, config){ return (typeof Chart !== 'undefined' && el) ? new Chart(el, config) : null; }
 document.getElementById('dashboardPeriod').addEventListener('change', () => {
   periodOffset = 0;
   renderDashboard();
@@ -1754,6 +1756,11 @@ else showLoginScreen();
 loadFromSheets().then(loaded => {
   if (loaded && currentUser) renderPage(currentPage);
 }).catch(() => {});
+
+// כש-Chart.js סיים להיטען (async) — מציירים מחדש כדי שהגרפים יופיעו (המספרים כבר הוצגו קודם)
+window.addEventListener('chartjs-ready', function() {
+  if (currentUser) { try { renderPage(currentPage); } catch(e){} }
+});
 
 // סנכרון אוטומטי כל 60 שניות
 setInterval(() => {
