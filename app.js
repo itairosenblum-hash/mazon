@@ -498,6 +498,17 @@ function getStation(id) { return state.stations.find(s => s.id === id); }
 // ─────────────────────────────────────────────
 const HOLIDAYS_CACHE_KEY = 'mazon_holidays_cache_v1';
 let holidayDatesSet = new Set();
+let holidayEveDatesSet = new Set();
+// מחשב את קבוצת "ערב חג" = היום שלפני כל תאריך חג (חישוב בזמן מקומי כדי להימנע מבאג UTC)
+function computeHolidayEves() {
+  const eves = new Set();
+  holidayDatesSet.forEach(ds => {
+    const d = new Date(ds + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    eves.add(toLocalDateStr(d));
+  });
+  holidayEveDatesSet = eves;
+}
 
 function loadHolidaysFromCache() {
   try {
@@ -505,6 +516,7 @@ function loadHolidaysFromCache() {
     if (!raw) return;
     const cache = JSON.parse(raw);
     if (Array.isArray(cache.dates)) holidayDatesSet = new Set(cache.dates);
+    computeHolidayEves();
   } catch(e) {}
 }
 loadHolidaysFromCache();
@@ -521,6 +533,7 @@ function refreshHolidaysCache() {
     const dates = [...new Set(results.flat())];
     if (dates.length) {
       holidayDatesSet = new Set(dates);
+      computeHolidayEves();
       try { localStorage.setItem(HOLIDAYS_CACHE_KEY, JSON.stringify({fetchedAt:Date.now(), dates})); } catch(e){}
       const dashView = document.getElementById('page-dashboard');
       if (dashView && dashView.classList.contains('active')) {
@@ -558,18 +571,30 @@ function renderHolidayCacheWarning() {
   el.textContent = '⚠ רשימת החגים לא התעדכנה מאז ' + dateTxt + ' — ייתכן שחגים עתידיים לא יזוהו כתקן סופ"ש/חג.';
 }
 
-function isWeekendDate(dateStr) {
+function isFridayDate(dateStr) {
   if (!dateStr) return false;
-  const dow = new Date(dateStr+'T00:00:00').getDay();
-  return dow === 5 || dow === 6; // שישי, שבת
+  return new Date(dateStr+'T00:00:00').getDay() === 5; // שישי
+}
+function isSaturdayDate(dateStr) {
+  if (!dateStr) return false;
+  return new Date(dateStr+'T00:00:00').getDay() === 6; // שבת
 }
 function isHolidayDate(dateStr) { return holidayDatesSet.has(dateStr); }
-function isSpecialDay(dateStr) { return isWeekendDate(dateStr) || isHolidayDate(dateStr); }
+function isHolidayEveDate(dateStr) { return holidayEveDatesSet.has(dateStr); }
+// שבת/חג מקטגוריה גבוהה יותר וגובר על שישי/ערב חג במקרה חפיפה
+function isShabbatOrHoliday(dateStr) { return isSaturdayDate(dateStr) || isHolidayDate(dateStr); }
+function isFridayOrHolidayEve(dateStr) { return isFridayDate(dateStr) || isHolidayEveDate(dateStr); }
+// יום מיוחד = כל יום שחל עליו תקן שאינו תקן יום חול
+function isSpecialDay(dateStr) { return isShabbatOrHoliday(dateStr) || isFridayOrHolidayEve(dateStr); }
 
-// מחזיר את אוסף התקן הרלוונטי לתחנה בתאריך נתון - תקן רגיל או תקן סופ"ש/חג
+// מחזיר את אוסף התקן הרלוונטי לתחנה בתאריך נתון:
+// שבת/חג -> minStaffSpecial | שישי/ערב חג -> minStaffFriday | אחרת -> minStaff (יום חול)
+// לתחנות ותיקות ללא minStaffFriday, נופלים חזרה ל-minStaffSpecial כדי לשמור על ההתנהגות הקיימת עד שיוגדר תקן שישי נפרד
 function getStandard(station, dateStr) {
   if (!station) return {};
-  return isSpecialDay(dateStr) ? (station.minStaffSpecial || {}) : (station.minStaff || {});
+  if (isShabbatOrHoliday(dateStr)) return station.minStaffSpecial || {};
+  if (isFridayOrHolidayEve(dateStr)) return station.minStaffFriday || station.minStaffSpecial || {};
+  return station.minStaff || {};
 }
 function requiredTotalForDate(station, dateStr) {
   const std = getStandard(station, dateStr);
@@ -737,12 +762,12 @@ function renderDashboard() {
   // בסופ"ש/חג ללא דיווח - מניחים בפועל = תקן סופ"ש/חג
   entries = injectVirtualEntries(entries, visibleStations, periodDatesArr);
 
-  const hasSpecialStandard = visibleStations.some(s => state.roles.some(r => ((s.minStaffSpecial||{})[r]||0) > 0));
+  const hasSpecialStandard = visibleStations.some(s => state.roles.some(r => ((s.minStaffSpecial||{})[r]||0) > 0 || ((s.minStaffFriday||s.minStaffSpecial||{})[r]||0) > 0));
   const weekendNote = document.getElementById('weekendAutoNote');
   if (weekendNote) {
     if (hasSpecialStandard) {
       weekendNote.style.display = '';
-      weekendNote.textContent = 'ℹ️ בימי שישי, שבת וחגים ללא דיווח בפועל, הנתונים מוצגים אוטומטית לפי תקן סופ"ש/חג שהוגדר לתחנה.';
+      weekendNote.textContent = 'ℹ️ בימי שישי/ערב חג ובשבת/חג ללא דיווח בפועל, הנתונים מוצגים אוטומטית לפי התקן שהוגדר לתחנה לאותו סוג יום.';
     } else {
       weekendNote.style.display = 'none';
     }
@@ -1317,9 +1342,12 @@ function renderRoleInputs() {
   const existing = state.entries.find(e=>e.stationId===stationId && e.date===date && !e.deleted); // undefined if not found
   const existingNote = existing ? (existing.note || '') : '';
   const special = isSpecialDay(date);
-  const specialBadge = special
-    ? `<div style="margin-bottom:10px;padding:8px 12px;border-radius:8px;background:rgba(232,197,71,0.15);border:1px solid #e8c547;color:var(--text);font-size:0.9rem">📅 התאריך הנבחר הוא סוף שבוע / חג — מוצג תקן סופ"ש/חג</div>`
-    : '';
+  let specialBadge = '';
+  if (isShabbatOrHoliday(date)) {
+    specialBadge = `<div style="margin-bottom:10px;padding:8px 12px;border-radius:8px;background:rgba(232,197,71,0.15);border:1px solid #e8c547;color:var(--text);font-size:0.9rem">🌙 התאריך הנבחר הוא שבת / חג — מוצג תקן שבת/חג</div>`;
+  } else if (isFridayOrHolidayEve(date)) {
+    specialBadge = `<div style="margin-bottom:10px;padding:8px 12px;border-radius:8px;background:rgba(232,197,71,0.15);border:1px solid #e8c547;color:var(--text);font-size:0.9rem">🕯️ התאריך הנבחר הוא יום שישי / ערב חג — מוצג תקן שישי/ערב חג</div>`;
+  }
   container.innerHTML = specialBadge + state.roles.map(role=>{
     const min = station?(getStandard(station,date)[role]||0):0;
     const val = existing !== undefined ? (existing.counts[role]||0) : min;
@@ -1459,16 +1487,22 @@ function renderStations() {
     <div class="stations-grid">${state.stations.map(s=>{
     const pills=state.roles.filter(r=>((s.minStaff||{})[r]||0)>0)
       .map(r=>`<span>${roleEmoji(r)} ${r}: ${s.minStaff[r]}</span>`).join('');
+    const fridayStd = s.minStaffFriday || s.minStaffSpecial || {};
+    const fridayPills=state.roles.filter(r=>(fridayStd[r]||0)>0)
+      .map(r=>`<span>${roleEmoji(r)} ${r}: ${fridayStd[r]}</span>`).join('');
     const specialPills=state.roles.filter(r=>((s.minStaffSpecial||{})[r]||0)>0)
       .map(r=>`<span>${roleEmoji(r)} ${r}: ${s.minStaffSpecial[r]}</span>`).join('');
     const stationTotal = state.roles.reduce((sum,r)=>sum+((s.minStaff||{})[r]||0),0);
+    const stationTotalFriday = state.roles.reduce((sum,r)=>sum+(fridayStd[r]||0),0);
     const stationTotalSpecial = state.roles.reduce((sum,r)=>sum+((s.minStaffSpecial||{})[r]||0),0);
     return `<div class="station-card">
       <div class="station-card-name">🏪 ${escapeHtml(s.name)}</div>
       <div class="station-roles-mini">${pills||'<span style="color:var(--text3)">לא הוגדרו מינימומים</span>'}</div>
       <div class="station-total">סה״כ נדרש (ימי חול): <strong>${stationTotal}</strong></div>
-      <div class="station-roles-mini" style="margin-top:6px">🌙 סופ"ש/חג: ${specialPills||'<span style="color:var(--text3)">אין תקן נפרד</span>'}</div>
-      <div class="station-total">סה״כ נדרש (סופ"ש/חג): <strong>${stationTotalSpecial}</strong></div>
+      <div class="station-roles-mini" style="margin-top:6px">🕯️ שישי/ערב חג: ${fridayPills||'<span style="color:var(--text3)">אין תקן נפרד</span>'}</div>
+      <div class="station-total">סה״כ נדרש (שישי/ערב חג): <strong>${stationTotalFriday}</strong></div>
+      <div class="station-roles-mini" style="margin-top:6px">🌙 שבת/חג: ${specialPills||'<span style="color:var(--text3)">אין תקן נפרד</span>'}</div>
+      <div class="station-total">סה״כ נדרש (שבת/חג): <strong>${stationTotalSpecial}</strong></div>
       <div class="station-card-actions">
         <button class="btn-icon" onclick="openStationModal('${s.id}')">✏ עריכה</button>
         <button class="btn-icon danger" onclick="deleteStation('${s.id}')">✕ מחק</button>
@@ -1489,6 +1523,16 @@ function openStationModal(stationId) {
     return `<label class="roles-min-label">${roleEmoji(role)} ${role}</label>
       <input class="roles-min-input" type="number" min="0" max="99" value="${min}" data-role="${role}" />`;
   }).join('')}</div>`;
+  const modalRolesMinFriday = document.getElementById('modalRolesMinFriday');
+  if (modalRolesMinFriday) {
+    // ברירת מחדל לתחנות ותיקות: אם אין תקן שישי נפרד, מציגים את ערכי שבת/חג הנוכחיים כדי לא לאבד נתונים
+    const fridaySrc = station ? (station.minStaffFriday || station.minStaffSpecial || {}) : {};
+    modalRolesMinFriday.innerHTML=`<div class="roles-min-grid">${state.roles.map(role=>{
+      const min=fridaySrc[role]||0;
+      return `<label class="roles-min-label">${roleEmoji(role)} ${role}</label>
+        <input class="roles-min-friday-input" type="number" min="0" max="99" value="${min}" data-role="${role}" />`;
+    }).join('')}</div>`;
+  }
   const modalRolesMinSpecial = document.getElementById('modalRolesMinSpecial');
   if (modalRolesMinSpecial) {
     modalRolesMinSpecial.innerHTML=`<div class="roles-min-grid">${state.roles.map(role=>{
@@ -1505,10 +1549,12 @@ document.getElementById('btnSaveStation').addEventListener('click',()=>{
   if(!name) return alert('יש להזין שם תחנה');
   const minStaff={};
   document.querySelectorAll('.roles-min-input').forEach(input=>{ minStaff[input.dataset.role]=parseInt(input.value)||0; });
+  const minStaffFriday={};
+  document.querySelectorAll('.roles-min-friday-input').forEach(input=>{ minStaffFriday[input.dataset.role]=parseInt(input.value)||0; });
   const minStaffSpecial={};
   document.querySelectorAll('.roles-min-special-input').forEach(input=>{ minStaffSpecial[input.dataset.role]=parseInt(input.value)||0; });
-  if(editingStationId){ const s=getStation(editingStationId); s.name=name; s.minStaff=minStaff; s.minStaffSpecial=minStaffSpecial; }
-  else state.stations.push({id:'s'+Date.now(),name,minStaff,minStaffSpecial});
+  if(editingStationId){ const s=getStation(editingStationId); s.name=name; s.minStaff=minStaff; s.minStaffFriday=minStaffFriday; s.minStaffSpecial=minStaffSpecial; }
+  else state.stations.push({id:'s'+Date.now(),name,minStaff,minStaffFriday,minStaffSpecial});
   saveState(); closeStationModal(); renderStations();
 });
 
