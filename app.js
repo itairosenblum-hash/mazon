@@ -713,7 +713,13 @@ function renderDashboard() {
     : allowedStations();
 
   const periodDatesArr = periodDateStrings(fromDate, toDate);
-  const stationsActive = new Set(entries.map(e => e.stationId)).size;
+  const reportedSet = new Set(entries.map(e => e.stationId));
+  const stationsActive = reportedSet.size;
+  const notReportedStations = visibleStations.filter(s => !reportedSet.has(s.id));
+  const notReportedTooltip = notReportedStations.length === 0
+    ? '<div class="tt-ok">✓ כל התחנות דיווחו</div>'
+    : '<div class="tt-title">טרם דיווחו (' + notReportedStations.length + '):</div>' +
+      notReportedStations.map(s => '<div class="tt-item">• ' + escapeHtml(s.name) + '</div>').join('');
 
   // בסופ"ש/חג ללא דיווח - מניחים בפועל = תקן סופ"ש/חג
   entries = injectVirtualEntries(entries, visibleStations, periodDatesArr);
@@ -745,17 +751,32 @@ function renderDashboard() {
   const cards = [
     { label: 'סה"כ עובדים', value: totalPresence, sub: periodSubLabel, color:'#e8c547', icon:'🍽' },
     { label: 'ממוצע ליום',  value: avgPerDay,     sub: 'כלל התחנות',  color:'#5aa0e0', icon:'📅' },
-    { label: 'תחנות פעילות',value: stationsActive+'/'+visibleStations.length, sub:'דיווחו', color:'#9b7fe8', icon:'🏪' },
+    { label: 'תחנות פעילות',value: stationsActive+'/'+visibleStations.length, sub:'דיווחו', color:'#9b7fe8', icon:'🏪', tooltip: notReportedTooltip },
     { label: 'עמידה בדרישות',value: compliancePct+'%', sub: Math.round(dailyPresence)+' בפועל מתוך '+totalRequired+' בתקן', color:compColor, icon:'✅' },
   ];
 
   document.getElementById('summaryCards').innerHTML = cards.map(c=>`
-    <div class="summary-card" style="--card-color:${c.color}">
-      <div class="summary-label">${c.label}</div>
+    <div class="summary-card${c.tooltip?' has-tooltip':''}" style="--card-color:${c.color}"${c.tooltip?' tabindex="0"':''}>
+      <div class="summary-label">${c.label}${c.tooltip?' <span class="tt-hint">ⓘ</span>':''}</div>
       <div class="summary-value">${c.value}</div>
       <div class="summary-sub">${c.sub}</div>
       <div class="food-deco">${c.icon}</div>
+      ${c.tooltip?`<div class="card-tooltip">${c.tooltip}</div>`:''}
     </div>`).join('');
+  // Tooltip tap-toggle (mobile) — bound once; container persists across re-renders
+  const _scWrap = document.getElementById('summaryCards');
+  if (_scWrap && !_scWrap._ttBound) {
+    _scWrap._ttBound = true;
+    _scWrap.addEventListener('click', e => {
+      const card = e.target.closest('.summary-card.has-tooltip');
+      if (!card) return;
+      _scWrap.querySelectorAll('.summary-card.tt-open').forEach(c => { if (c!==card) c.classList.remove('tt-open'); });
+      card.classList.toggle('tt-open');
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#summaryCards')) _scWrap.querySelectorAll('.summary-card.tt-open').forEach(c=>c.classList.remove('tt-open'));
+    });
+  }
 
   // Build station data: actual vs required
   const stationTotals = visibleStations.map(s=>{

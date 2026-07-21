@@ -449,6 +449,37 @@ body::before {
 }
 .summary-sub { font-size: 0.68rem; color: var(--text3); margin-top: 4px; }
 
+/* ── Summary-card tooltip (תחנות שטרם דיווחו) ── */
+.summary-card.has-tooltip { cursor: pointer; }
+.summary-card.has-tooltip:hover,
+.summary-card.tt-open { overflow: visible; z-index: 40; }
+.tt-hint { font-size: 0.72em; opacity: 0.55; vertical-align: middle; }
+.card-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0; left: 0;
+  z-index: 41;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 22px rgba(0,0,0,0.35);
+  padding: 10px 12px;
+  font-size: 0.75rem;
+  color: var(--text);
+  text-align: right;
+  opacity: 0; visibility: hidden; transform: translateY(-4px);
+  transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+  pointer-events: none;
+  max-height: 240px; overflow-y: auto;
+}
+.summary-card.has-tooltip:hover .card-tooltip,
+.summary-card.tt-open .card-tooltip {
+  opacity: 1; visibility: visible; transform: translateY(0);
+}
+.card-tooltip .tt-title { font-weight: 700; margin-bottom: 6px; color: var(--text2); }
+.card-tooltip .tt-item { padding: 2px 0; line-height: 1.4; }
+.card-tooltip .tt-ok { color: #52c07a; font-weight: 600; }
+
 /* ══════════════════════════════
    CHARTS
 ══════════════════════════════ */
