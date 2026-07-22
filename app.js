@@ -715,22 +715,68 @@ function allowedStations() {
   return state.stations.filter(s => currentUser.stationIds.includes(s.id));
 }
 
+const HE_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+
+// טווח קלנדרי מלא לפי סוג התקופה — שבוע ראשון–שבת, חודש מלא, רבעון מלא, שנה מלאה.
+// periodOffset מזיז ביחידות שלמות (שבוע/חודש/רבעון/שנה) ולא בימים, כך שאין זליגה בין תקופות.
+// fullTo = סוף התקופה הקלנדרית; to נחתך להיום כדי לא לכלול ימים עתידיים.
 function getPeriodRange(days) {
-  // Returns {from, to} Date objects based on period and offset
-  const to = new Date();
-  to.setHours(23,59,59,999);
+  const now = new Date();
+  const todayEnd = new Date(now);
+  todayEnd.setHours(23,59,59,999);
+
   if (days === 1) {
-    to.setDate(to.getDate() + periodOffset);
-    const from = new Date(to);
+    const from = new Date(now);
     from.setHours(0,0,0,0);
-    return { from, to };
+    from.setDate(from.getDate() + periodOffset);
+    const to = new Date(from);
+    to.setHours(23,59,59,999);
+    return { from, to, fullTo: to };
+  }
+
+  let from, fullTo;
+  if (days === 7) {
+    from = new Date(now);
+    from.setHours(0,0,0,0);
+    from.setDate(from.getDate() - from.getDay() + periodOffset * 7);
+    fullTo = new Date(from);
+    fullTo.setDate(from.getDate() + 6);
+  } else if (days === 30) {
+    from = new Date(now.getFullYear(), now.getMonth() + periodOffset, 1);
+    fullTo = new Date(from.getFullYear(), from.getMonth() + 1, 0);
+  } else if (days === 90) {
+    const q = Math.floor(now.getMonth() / 3) + periodOffset;
+    from = new Date(now.getFullYear(), q * 3, 1);
+    fullTo = new Date(from.getFullYear(), from.getMonth() + 3, 0);
+  } else if (days === 365) {
+    from = new Date(now.getFullYear() + periodOffset, 0, 1);
+    fullTo = new Date(from.getFullYear(), 11, 31);
   } else {
+    // fallback: חלון מתגלגל
+    const to = new Date(now);
+    to.setHours(23,59,59,999);
     to.setDate(to.getDate() + (periodOffset * days));
-    const from = new Date(to);
+    from = new Date(to);
     from.setDate(from.getDate() - (days - 1));
     from.setHours(0,0,0,0);
-    return { from, to };
+    return { from, to, fullTo: to };
   }
+
+  from.setHours(0,0,0,0);
+  fullTo.setHours(23,59,59,999);
+  const to = fullTo > todayEnd ? todayEnd : fullTo;
+  return { from, to, fullTo };
+}
+
+// תווית קריאה לתקופה קלנדרית: "יולי 2026", "שבוע 19/07–25/07", "רבעון 3 · 2026", "שנת 2026"
+function periodRangeLabel(period, from, to, fullTo) {
+  const dm = d => String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+  const partial = (fullTo && to < fullTo) ? ' · עד היום' : '';
+  if (period === 7)   return 'שבוע ' + dm(from) + '–' + dm(fullTo || to) + partial;
+  if (period === 30)  return HE_MONTHS[from.getMonth()] + ' ' + from.getFullYear() + partial;
+  if (period === 90)  return 'רבעון ' + (Math.floor(from.getMonth()/3)+1) + ' · ' + from.getFullYear() + partial;
+  if (period === 365) return 'שנת ' + from.getFullYear() + partial;
+  return dm(from) + '–' + dm(to);
 }
 
 function entriesInPeriod(days) {
@@ -802,16 +848,16 @@ function renderDashboard() {
   let entries = entriesInPeriod(period);
   if (selectedStationId) entries = entries.filter(e => e.stationId === selectedStationId);
 
-  const periodLabels = {1:'היום',7:'שבוע אחרון',30:'חודש אחרון',90:'רבעון אחרון',365:'שנה אחרונה'};
-  document.getElementById('chartPeriodLabel').textContent = periodLabels[period] || period + ' ימים';
-
-  // Show date range using getPeriodRange
-  const { from: fromDate, to: toDate } = getPeriodRange(period);
+  // Show date range using getPeriodRange (טווח קלנדרי מלא)
+  const { from: fromDate, to: toDate, fullTo } = getPeriodRange(period);
+  const calLabel = periodRangeLabel(period, fromDate, toDate, fullTo);
+  document.getElementById('chartPeriodLabel').textContent =
+    period === 1 ? formatDate(toLocalDateStr(toDate)) : calLabel;
   const fmtShort = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
   const dayNames = ['יום ראשון','יום שני','יום שלישי','יום רביעי','יום חמישי','יום שישי','יום שבת'];
   const rangeText = period===1
     ? `📅 ${dayNames[toDate.getDay()]}, ${fmtShort(toDate)}`
-    : `📅 ${fmtShort(fromDate)} — ${dayNames[toDate.getDay()]}, ${fmtShort(toDate)}`;
+    : `📅 ${calLabel}`;
   ['dashboardDateRange','tbDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=rangeText;});
   ['periodNext','tbNext'].forEach(id=>{const btn=document.getElementById(id);if(btn)btn.disabled=periodOffset>=0;});
   // Store the reference date for the date-picker (so clicking the label opens the calendar on this date)
@@ -859,7 +905,7 @@ function renderDashboard() {
   const compliancePct = totalRequiredRaw > 0 ? Math.min(100, Math.round((dailyPresence / totalRequiredRaw) * 100)) : 100;
   const compColor = compliancePct>=90 ? '#52c07a' : compliancePct>=70 ? '#e07a3a' : '#e05252';
 
-  const periodSubLabel = {1:'היום',7:'שבוע',30:'חודש',90:'רבעון',365:'שנה'}[period] || period+' ימים';
+  const periodSubLabel = period === 1 ? 'היום' : calLabel;
   const cards = [
     period === 1
       ? { label: 'סה"כ עובדים', value: totalPresence, sub: periodSubLabel, color:'#e8c547', icon:'🍽' }
@@ -1339,7 +1385,7 @@ function renderDashboardNotes(entries, period) {
 
   // Update label
   if (label) {
-    const periodLabels = {1:'— היום',7:'— שבוע אחרון',30:'— חודש אחרון',90:'— רבעון אחרון',365:'— שנה אחרונה'};
+    const periodLabels = {1:'— היום',7:'— השבוע',30:'— החודש',90:'— הרבעון',365:'— השנה'};
     label.textContent = periodLabels[period] || '';
   }
 
