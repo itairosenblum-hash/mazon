@@ -909,7 +909,13 @@ function renderDashboard() {
   const cards = [
     period === 1
       ? { label: 'סה"כ עובדים', value: totalPresence, sub: periodSubLabel, color:'#e8c547', icon:'🍽' }
-      : { label: 'נוכחות ממוצעת ליום', value: avgDaily, sub: periodSubLabel + ' · ' + totalPresence + ' ימי-עבודה', color:'#e8c547', icon:'🍽' },
+      : { label: 'נוכחות ממוצעת ליום', value: avgDaily,
+          sub: periodSubLabel + ' · ' + daysReported + (daysReported === 1 ? ' יום דיווח' : ' ימי דיווח'),
+          color:'#e8c547', icon:'🍽',
+          tooltip: '<div class="tt-title">אופן החישוב:</div>' +
+                   '<div class="tt-item">• סה"כ נוכחות מצטברת: ' + totalPresence + ' (עובד × יום)</div>' +
+                   '<div class="tt-item">• מחולק ב-' + daysReported + ' ימים שדווחו בתקופה</div>' +
+                   '<div class="tt-item">• = ' + avgDaily + ' עובדים ביום בממוצע</div>' },
     { label: 'ממוצע שבועי', value: weekAvg.avg,   sub: weekAvg.days === 0 ? 'ראשון–חמישי · אין דיווח' : 'ראשון–חמישי · ' + (weekAvg.days === 1 ? 'יום אחד' : weekAvg.days + ' ימים'), color:'#5aa0e0', icon:'📅' },
     { label: 'תחנות פעילות',value: stationsActive+'/'+visibleStations.length, sub:'דיווחו', color:'#9b7fe8', icon:'🏪', tooltip: notReportedTooltip },
     { label: 'עמידה בדרישות',value: compliancePct+'%', sub: Math.round(dailyPresence)+' בפועל מתוך '+totalRequired+' בתקן', color:compColor, icon:'✅' },
