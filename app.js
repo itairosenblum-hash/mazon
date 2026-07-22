@@ -618,6 +618,29 @@ function periodDateStrings(fromDate, toDate) {
   return out;
 }
 
+// ממוצע נוכחות יומי לימי ראשון–חמישי של השבוע שאליו שייך התאריך המוצג
+function sunThuWeekAvg(refDate, stations) {
+  const sunday = new Date(refDate);
+  sunday.setHours(0,0,0,0);
+  sunday.setDate(sunday.getDate() - sunday.getDay());
+  const today = new Date();
+  today.setHours(23,59,59,999);
+  const dates = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate() + i);
+    if (d <= today) dates.push(toLocalDateStr(d));
+  }
+  if (!dates.length || !stations || !stations.length) return { avg: '0.0', days: 0 };
+  const dateSet = new Set(dates);
+  const stIds = new Set(stations.map(s => s.id));
+  let rows = activeEntries().filter(e => dateSet.has(e.date) && stIds.has(e.stationId));
+  rows = injectVirtualEntries(rows, stations, dates);
+  const daysWithData = new Set(rows.map(e => e.date)).size;
+  const total = rows.reduce((s, e) => s + totalForEntry(e), 0);
+  return { avg: daysWithData ? (total / daysWithData).toFixed(1) : '0.0', days: daysWithData };
+}
+
 // בסופ"ש/חג: אם לא דווח בפועל, מניחים שהמצב תואם את תקן סופ"ש/חג (רשומה וירטואלית)
 function injectVirtualEntries(entries, stations, dates) {
   if (!dates || !dates.length || !stations || !stations.length) return entries;
@@ -777,7 +800,7 @@ function renderDashboard() {
   renderHolidayCacheWarning();
 
   const totalPresence = entries.reduce((s,e) => s + totalForEntry(e), 0);
-  const avgPerDay = (totalPresence / period).toFixed(1);
+  const weekAvg = sunThuWeekAvg(toDate, visibleStations);
 
   const totalRequiredRaw = avgRequiredTotal(visibleStations, periodDatesArr);
   const totalRequired = Math.round(totalRequiredRaw);
@@ -788,7 +811,7 @@ function renderDashboard() {
   const periodSubLabel = {1:'היום',7:'שבוע',30:'חודש',90:'רבעון',365:'שנה'}[period] || period+' ימים';
   const cards = [
     { label: 'סה"כ עובדים', value: totalPresence, sub: periodSubLabel, color:'#e8c547', icon:'🍽' },
-    { label: 'ממוצע ליום',  value: avgPerDay,     sub: 'כלל התחנות',  color:'#5aa0e0', icon:'📅' },
+    { label: 'ממוצע שבועי', value: weekAvg.avg,   sub: weekAvg.days === 0 ? 'ראשון–חמישי · אין דיווח' : 'ראשון–חמישי · ' + (weekAvg.days === 1 ? 'יום אחד' : weekAvg.days + ' ימים'), color:'#5aa0e0', icon:'📅' },
     { label: 'תחנות פעילות',value: stationsActive+'/'+visibleStations.length, sub:'דיווחו', color:'#9b7fe8', icon:'🏪', tooltip: notReportedTooltip },
     { label: 'עמידה בדרישות',value: compliancePct+'%', sub: Math.round(dailyPresence)+' בפועל מתוך '+totalRequired+' בתקן', color:compColor, icon:'✅' },
   ];
