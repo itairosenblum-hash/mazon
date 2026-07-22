@@ -641,6 +641,55 @@ function sunThuWeekAvg(refDate, stations) {
   return { avg: daysWithData ? (total / daysWithData).toFixed(1) : '0.0', days: daysWithData };
 }
 
+// ניתוח פערים לתקופה: ימים מתחת לתקן + הפערים הגדולים לפי תחנה ולפי תפקיד.
+// נספרים רק ימים ותחנות שיש בהם דיווח בפועל, כדי שחוסר בדיווח לא ייחשב כחוסר בכוח אדם.
+function periodGapStats(entries, stations, dates) {
+  const dateSet = new Set(dates);
+  const stMap = new Map(stations.map(s => [s.id, s]));
+  const byDate = new Map();
+  entries.forEach(e => {
+    if (!dateSet.has(e.date) || !stMap.has(e.stationId)) return;
+    if (!byDate.has(e.date)) byDate.set(e.date, new Map());
+    const m = byDate.get(e.date);
+    if (!m.has(e.stationId)) m.set(e.stationId, []);
+    m.get(e.stationId).push(e);
+  });
+
+  const belowDays = [];
+  const roleGap = {}, stGap = {}, stDays = {};
+  byDate.forEach((stationEntries, date) => {
+    let dayActual = 0, dayRequired = 0;
+    stationEntries.forEach((evs, stId) => {
+      const st = stMap.get(stId);
+      const act = evs.reduce((s, e) => s + totalForEntry(e), 0);
+      const req = requiredTotalForDate(st, date);
+      dayActual += act;
+      dayRequired += req;
+      stDays[stId] = (stDays[stId] || 0) + 1;
+      stGap[stId] = (stGap[stId] || 0) + Math.max(0, req - act);
+      const std = getStandard(st, date);
+      state.roles.forEach(r => {
+        const a = evs.reduce((s, e) => s + (e.counts[r] || 0), 0);
+        roleGap[r] = (roleGap[r] || 0) + Math.max(0, (std[r] || 0) - a);
+      });
+    });
+    if (dayActual < dayRequired) belowDays.push({ date, gap: dayRequired - dayActual });
+  });
+
+  const daysWithData = byDate.size;
+  belowDays.sort((a, b) => b.gap - a.gap);
+  const stationGaps = Object.keys(stGap)
+    .map(id => ({ name: (stMap.get(id) || {}).name || '', avgGap: stGap[id] / (stDays[id] || 1) }))
+    .filter(x => x.avgGap >= 0.05)
+    .sort((a, b) => b.avgGap - a.avgGap);
+  const roleGaps = state.roles
+    .map(r => ({ role: r, avgGap: daysWithData ? (roleGap[r] || 0) / daysWithData : 0 }))
+    .filter(x => x.avgGap >= 0.05)
+    .sort((a, b) => b.avgGap - a.avgGap);
+
+  return { daysWithData, belowDays, stationGaps, roleGaps };
+}
+
 // בסופ"ש/חג: אם לא דווח בפועל, מניחים שהמצב תואם את תקן סופ"ש/חג (רשומה וירטואלית)
 function injectVirtualEntries(entries, stations, dates) {
   if (!dates || !dates.length || !stations || !stations.length) return entries;
@@ -800,6 +849,8 @@ function renderDashboard() {
   renderHolidayCacheWarning();
 
   const totalPresence = entries.reduce((s,e) => s + totalForEntry(e), 0);
+  const daysReported = new Set(entries.map(e => e.date)).size;
+  const avgDaily = daysReported ? (totalPresence / daysReported).toFixed(1) : '0.0';
   const weekAvg = sunThuWeekAvg(toDate, visibleStations);
 
   const totalRequiredRaw = avgRequiredTotal(visibleStations, periodDatesArr);
@@ -810,11 +861,38 @@ function renderDashboard() {
 
   const periodSubLabel = {1:'היום',7:'שבוע',30:'חודש',90:'רבעון',365:'שנה'}[period] || period+' ימים';
   const cards = [
-    { label: 'סה"כ עובדים', value: totalPresence, sub: periodSubLabel, color:'#e8c547', icon:'🍽' },
+    period === 1
+      ? { label: 'סה"כ עובדים', value: totalPresence, sub: periodSubLabel, color:'#e8c547', icon:'🍽' }
+      : { label: 'נוכחות ממוצעת ליום', value: avgDaily, sub: periodSubLabel + ' · ' + totalPresence + ' ימי-עבודה', color:'#e8c547', icon:'🍽' },
     { label: 'ממוצע שבועי', value: weekAvg.avg,   sub: weekAvg.days === 0 ? 'ראשון–חמישי · אין דיווח' : 'ראשון–חמישי · ' + (weekAvg.days === 1 ? 'יום אחד' : weekAvg.days + ' ימים'), color:'#5aa0e0', icon:'📅' },
     { label: 'תחנות פעילות',value: stationsActive+'/'+visibleStations.length, sub:'דיווחו', color:'#9b7fe8', icon:'🏪', tooltip: notReportedTooltip },
     { label: 'עמידה בדרישות',value: compliancePct+'%', sub: Math.round(dailyPresence)+' בפועל מתוך '+totalRequired+' בתקן', color:compColor, icon:'✅' },
   ];
+
+  // בטווח של יותר מיום אחד — כרטיסי פערים במקום ספירה מצטברת
+  if (period > 1) {
+    const gapStats = periodGapStats(entries, visibleStations, periodDatesArr);
+    const belowCount = gapStats.belowDays.length;
+    const belowRatio = gapStats.daysWithData ? belowCount / gapStats.daysWithData : 0;
+    const belowColor = belowCount === 0 ? '#52c07a' : belowRatio <= 0.2 ? '#e07a3a' : '#e05252';
+    const belowTooltip = belowCount === 0
+      ? '<div class="tt-ok">✓ בכל הימים שדווחו הייתה עמידה בתקן</div>'
+      : '<div class="tt-title">הימים החסרים ביותר:</div>' +
+        gapStats.belowDays.slice(0,5).map(d => '<div class="tt-item">• ' + formatDate(d.date) + ' — חסרים ' + d.gap + '</div>').join('') +
+        (belowCount > 5 ? '<div class="tt-item">ועוד ' + (belowCount-5) + ' ימים</div>' : '');
+    cards.push({ label:'ימים מתחת לתקן', value: belowCount + '/' + gapStats.daysWithData, sub:'מתוך ימים שדווחו', color:belowColor, icon:'⚠️', tooltip: belowTooltip });
+
+    const worstSt = gapStats.stationGaps[0];
+    const gapTooltip = (gapStats.stationGaps.length
+        ? '<div class="tt-title">תחנות (חוסר ממוצע ליום):</div>' +
+          gapStats.stationGaps.slice(0,3).map(s => '<div class="tt-item">• ' + escapeHtml(s.name) + ' — ' + s.avgGap.toFixed(1) + '</div>').join('')
+        : '<div class="tt-ok">✓ אין פערים בתחנות</div>') +
+      (gapStats.roleGaps.length
+        ? '<div class="tt-title">תפקידים (חוסר ממוצע ליום):</div>' +
+          gapStats.roleGaps.slice(0,3).map(r => '<div class="tt-item">• ' + roleEmoji(r.role) + ' ' + escapeHtml(r.role) + ' — ' + r.avgGap.toFixed(1) + '</div>').join('')
+        : '');
+    cards.push({ label:'הפער הגדול ביותר', value: worstSt ? '−' + worstSt.avgGap.toFixed(1) : '0', sub: worstSt ? escapeHtml(worstSt.name) : 'אין פערים', color: worstSt ? '#e05252' : '#52c07a', icon:'📉', tooltip: gapTooltip });
+  }
 
   document.getElementById('summaryCards').innerHTML = cards.map(c=>`
     <div class="summary-card${c.tooltip?' has-tooltip':''}" style="--card-color:${c.color}"${c.tooltip?' tabindex="0"':''}>
@@ -1026,11 +1104,16 @@ function renderDashboard() {
     }
   });
 
-  document.getElementById('stationSummaryTable').innerHTML = `<table>
+  const showAvg = period > 1;
+  const fmtCell = (v, n) => showAvg ? (n ? v / n : 0).toFixed(1) : v;
+  document.getElementById('stationSummaryTable').innerHTML = (showAvg
+    ? '<div style="font-size:0.72rem;color:var(--text3);margin-bottom:8px">ℹ️ הערכים מוצגים כממוצע יומי (בפועל / תקן) לאורך התקופה</div>'
+    : '') + `<table>
     <thead><tr><th>תחנה</th>${state.roles.map(r=>`<th>${roleEmoji(r)} ${r}</th>`).join('')}<th>סה"כ</th><th>ציות</th></tr></thead>
     <tbody>${visibleStations.map(station=>{
       const stEntries=entries.filter(e=>e.stationId===station.id);
       const dates = stEntries.length ? stEntries.map(e=>e.date) : [today()];
+      const nDays = stEntries.length ? new Set(stEntries.map(e=>e.date)).size : 1;
       const roleSums={}; const roleReq={}; let sTotal=0, sC=0, sR=0;
       state.roles.forEach(role=>{
         const sum=stEntries.reduce((s,e)=>s+(e.counts[role]||0),0);
@@ -1046,8 +1129,8 @@ function renderDashboard() {
         const actual=roleSums[r]||0;
         const req=roleReq[r]||0;
         const cellCls=req>0?(actual>=req?'cell-ok':actual>=req*0.7?'cell-warn':'cell-danger'):'';
-        return `<td class="${cellCls}">${actual}${req>0?` / ${req}`:''}</td>`;
-      }).join('')}<td><strong>${sTotal}${totalRequired>0?` / ${totalRequired}`:''}</strong></td><td><span class="badge ${cls}">${pct}%</span></td></tr>`;
+        return `<td class="${cellCls}">${fmtCell(actual,nDays)}${req>0?` / ${fmtCell(req,nDays)}`:''}</td>`;
+      }).join('')}<td><strong>${fmtCell(sTotal,nDays)}${totalRequired>0?` / ${fmtCell(totalRequired,nDays)}`:''}</strong></td><td><span class="badge ${cls}">${pct}%</span></td></tr>`;
     }).join('')}${(()=>{
       const grandRoleSums={}; let grandTotal=0, grandRequired=0;
       const grandRoleRequired={};
@@ -1055,16 +1138,18 @@ function renderDashboard() {
       visibleStations.forEach(station=>{
         const stEntries=entries.filter(e=>e.stationId===station.id);
         const dates = stEntries.length ? stEntries.map(e=>e.date) : [today()];
+        const gDiv = showAvg && stEntries.length ? new Set(stEntries.map(e=>e.date)).size : 1;
         state.roles.forEach(r=>{
-          const sum=stEntries.reduce((s,e)=>s+(e.counts[r]||0),0);
+          const sum=stEntries.reduce((s,e)=>s+(e.counts[r]||0),0)/gDiv;
           grandRoleSums[r]=(grandRoleSums[r]||0)+sum;
           grandTotal+=sum;
-          const reqTotal=dates.reduce((s,d)=>s+(getStandard(station,d)[r]||0),0);
+          const reqTotal=dates.reduce((s,d)=>s+(getStandard(station,d)[r]||0),0)/gDiv;
           grandRoleRequired[r]=(grandRoleRequired[r]||0)+reqTotal;
           grandRequired+=reqTotal;
         });
       });
-      return `<tr style="border-top:2px solid var(--border);background:var(--bg-secondary)"><td><strong>סה"כ</strong></td>${state.roles.map(r=>{const req=grandRoleRequired[r]||0;const act=grandRoleSums[r]||0;const cls=req>0?(act>=req?'cell-ok':act>=req*0.7?'cell-warn':'cell-danger'):'';return `<td class="${cls}"><strong>${act}${req>0?` / ${req}`:''}</strong></td>`;}).join('')}<td><strong>${grandTotal}${grandRequired>0?` / ${grandRequired}`:''}</strong></td><td></td></tr>`;
+      const gFmt = v => showAvg ? v.toFixed(1) : v;
+      return `<tr style="border-top:2px solid var(--border);background:var(--bg-secondary)"><td><strong>סה"כ</strong></td>${state.roles.map(r=>{const req=grandRoleRequired[r]||0;const act=grandRoleSums[r]||0;const cls=req>0?(act>=req?'cell-ok':act>=req*0.7?'cell-warn':'cell-danger'):'';return `<td class="${cls}"><strong>${gFmt(act)}${req>0?` / ${gFmt(req)}`:''}</strong></td>`;}).join('')}<td><strong>${gFmt(grandTotal)}${grandRequired>0?` / ${gFmt(grandRequired)}`:''}</strong></td><td></td></tr>`;
     })()}</tbody></table>`;
 
 
