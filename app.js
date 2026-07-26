@@ -130,6 +130,21 @@ const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxGbw-3lCORvqqt3GeAe
 const SYNC_KEY = 'mzn_K7q2xFw9pT4dR8sL';
 let syncTimeout = null;
 let serverV2 = null; // null=לא ידוע, true=Apps Script חדש (מיזוג+אימות), false=ישן
+// דגל "שינויי תצורה ממתינים לסנכרון" (תחנות/תפקידים/משתמשים) — מונע מטעינת רקע לדרוס עריכה מקומית שטרם אושרה בשרת
+const PENDING_CONFIG_KEY = 'mazon_pending_config_v1';
+let configSeq = 0;
+let configDirty = false;
+try { configDirty = localStorage.getItem(PENDING_CONFIG_KEY) === '1'; } catch(e) {}
+function markConfigDirty() {
+  configDirty = true;
+  configSeq++;
+  try { localStorage.setItem(PENDING_CONFIG_KEY, '1'); } catch(e) {}
+  scheduleSave();
+}
+function clearConfigDirty() {
+  configDirty = false;
+  try { localStorage.removeItem(PENDING_CONFIG_KEY); } catch(e) {}
+}
 
 // הגנת XSS + תווים מיוחדים בשמות שמוצגים ב-HTML
 function escapeHtml(s) {
@@ -181,11 +196,13 @@ function jsonpGet(url) {
 
 async function syncToSheets() {
   setSyncStatus('saving');
+  const mySeq = configSeq;
   if (serverV2 === null) await checkServerV2();
   if (!serverV2) {
     // Apps Script ישן — התנהגות קודמת (ללא אימות)
     try {
       await fetch(SHEETS_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(state) });
+      if (configSeq === mySeq) clearConfigDirty();
       setSyncStatus('saved');
     } catch(e) { console.warn('Sync save error:', e); setSyncStatus('error'); }
     return;
@@ -207,7 +224,7 @@ async function syncToSheets() {
   for (let i = 0; i < 3; i++) {
     try {
       const res = await jsonpGet(SHEETS_URL + '?action=confirm&key=' + SYNC_KEY);
-      if (res && res.lastSaveId === saveId) { setSyncStatus('saved'); return; }
+      if (res && res.lastSaveId === saveId) { if (configSeq === mySeq) clearConfigDirty(); setSyncStatus('saved'); return; }
     } catch(e) {}
     await new Promise(r => setTimeout(r, 1500));
   }
@@ -256,10 +273,20 @@ async function loadFromSheets() {
       const merged = mergeEntries(state.entries, data.entries);
       const remoteJson = JSON.stringify(sortByKey(data.entries || []));
       const mergedJson = JSON.stringify(sortByKey(merged));
+      // שמירה על שינויי תצורה מקומיים (תחנות/תפקידים/משתמשים) שטרם אושרו בשרת,
+      // אחרת טעינת רקע דורסת עריכת תקן שנשמרה מקומית לפני שהגיעה לשרת.
+      // תנאי הבטיחות (stations.length>0) מונע מ-localStorage ריק (למשל PWA באייפון) למחוק את תצורת השרת.
+      const keepLocalConfig = configDirty && Array.isArray(state.stations) && state.stations.length > 0;
+      const localStations = state.stations, localRoles = state.roles, localUsers = state.users;
       state = data;
       state.entries = merged;
+      if (keepLocalConfig) {
+        state.stations = localStations;
+        state.roles = localRoles;
+        state.users = localUsers;
+      }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      if (mergedJson !== remoteJson) scheduleSave(); // יש רשומות מקומיות שהשרת עוד לא מכיר — דוחפים חזרה
+      if (mergedJson !== remoteJson || keepLocalConfig) scheduleSave(); // דוחפים חזרה רשומות/תצורה מקומיות שהשרת עוד לא מכיר
       setSyncStatus('saved');
       if (serverV2 !== true) checkServerV2();
       return true;
@@ -1715,7 +1742,7 @@ document.getElementById('btnSaveStation').addEventListener('click',()=>{
   document.querySelectorAll('.roles-min-special-input').forEach(input=>{ minStaffSpecial[input.dataset.role]=parseInt(input.value)||0; });
   if(editingStationId){ const s=getStation(editingStationId); s.name=name; s.minStaff=minStaff; s.minStaffFriday=minStaffFriday; s.minStaffSpecial=minStaffSpecial; }
   else state.stations.push({id:'s'+Date.now(),name,minStaff,minStaffFriday,minStaffSpecial});
-  saveState(); closeStationModal(); renderStations();
+  markConfigDirty(); saveState(); closeStationModal(); renderStations();
 });
 
 document.getElementById('btnCancelStation').addEventListener('click',closeStationModal);
@@ -1725,7 +1752,7 @@ function closeStationModal(){ document.getElementById('stationModal').style.disp
 function deleteStation(id){
   if(!confirm('למחוק תחנה זו?')) return;
   state.stations=state.stations.filter(s=>s.id!==id);
-  saveState(); renderStations();
+  markConfigDirty(); saveState(); renderStations();
 }
 
 // ─────────────────────────────────────────────
@@ -1850,6 +1877,7 @@ document.getElementById('btnSaveUser').addEventListener('click', ()=>{
     if (!password) { alert('יש להזין סיסמה'); return; }
     state.users.push({ id:'u'+Date.now(), username, password, role, name, stationIds, phone });
   }
+  markConfigDirty();
   saveState();
   closeUserModal();
   renderUsers();
@@ -1869,7 +1897,7 @@ function deleteUser(id) {
   if (id==='u0') { alert('לא ניתן למחוק את מנהל הראשי'); return; }
   if (!confirm('למחוק משתמש זה?')) return;
   state.users=state.users.filter(u=>u.id!==id);
-  saveState(); renderUsers();
+  markConfigDirty(); saveState(); renderUsers();
 }
 
 // ─────────────────────────────────────────────
@@ -1885,7 +1913,7 @@ function renderSettings() {
 
 function deleteRole(index) {
   if(!confirm(`למחוק תפקיד "${state.roles[index]}"?`)) return;
-  state.roles.splice(index,1); saveState(); renderSettings();
+  state.roles.splice(index,1); markConfigDirty(); saveState(); renderSettings();
 }
 
 document.getElementById('btnAddRole').addEventListener('click',()=>{
@@ -1893,7 +1921,7 @@ document.getElementById('btnAddRole').addEventListener('click',()=>{
   const name=input.value.trim();
   if(!name) return;
   if(state.roles.includes(name)){alert('תפקיד זה כבר קיים');return;}
-  state.roles.push(name); saveState(); input.value=''; renderSettings();
+  state.roles.push(name); markConfigDirty(); saveState(); input.value=''; renderSettings();
 });
 document.getElementById('newRoleName').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btnAddRole').click();});
 
