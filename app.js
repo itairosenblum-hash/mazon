@@ -2035,46 +2035,10 @@ function renderReports() {
   sel.innerHTML = '<option value="">כל התחנות</option>' +
     stations.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
 
+  // Default the month picker to the current month
   const now = new Date();
-  const curYear = now.getFullYear();
-
-  // Populate year dropdowns (current year back 4 years)
-  let yearOpts = '';
-  for (let y = curYear; y >= curYear - 4; y--) yearOpts += '<option value="' + y + '">' + y + '</option>';
-  const qYearEl = document.getElementById('reportQuarterYear');
-  const yearEl  = document.getElementById('reportYear');
-  if (qYearEl) qYearEl.innerHTML = yearOpts;
-  if (yearEl)  yearEl.innerHTML  = yearOpts;
-
-  // Sensible defaults: current month / current quarter
   const monthEl = document.getElementById('reportMonth');
-  if (monthEl && !monthEl.value) monthEl.value = curYear + '-' + String(now.getMonth() + 1).padStart(2, '0');
-  const qEl = document.getElementById('reportQuarter');
-  if (qEl) qEl.value = String(Math.floor(now.getMonth() / 3));
-
-  // Period selector → show only the matching picker
-  const periodSel = document.getElementById('reportPeriod');
-  const pickers = {
-    month:   document.getElementById('reportMonthPicker'),
-    quarter: document.getElementById('reportQuarterPicker'),
-    year:    document.getElementById('reportYearPicker'),
-    custom:  document.getElementById('reportCustomRange'),
-  };
-  function togglePickers() {
-    const v = periodSel ? periodSel.value : 'month';
-    Object.keys(pickers).forEach(function(k) {
-      if (pickers[k]) pickers[k].style.display = (k === v) ? 'flex' : 'none';
-    });
-  }
-  if (periodSel) { periodSel.onchange = togglePickers; togglePickers(); }
-
-  // Custom range default dates (last 30 days)
-  const today = new Date();
-  const fromDate = new Date(today); fromDate.setDate(today.getDate() - 30);
-  const fromEl = document.getElementById('reportFrom');
-  const toEl = document.getElementById('reportTo');
-  if (fromEl && !fromEl.value) fromEl.value = toLocalDateStr(fromDate);
-  if (toEl && !toEl.value) toEl.value = toLocalDateStr(today);
+  if (monthEl && !monthEl.value) monthEl.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
 }
 
 function getReportDateRange() {
@@ -2122,7 +2086,7 @@ function generatePDF() {
   try {
     if (!state || !state.stations) { alert('אין נתונים להפקת דוח.'); return; }
 
-    const reportType    = document.getElementById('reportType')?.value    || 'summary';
+    const reportType    = 'monthly';
     const stationFilter = document.getElementById('reportStation')?.value || '';
     const { from, to }  = getReportDateRange();
     const fromStr = from.toLocaleDateString('he-IL');
