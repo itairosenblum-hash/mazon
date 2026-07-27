@@ -2220,7 +2220,11 @@ function generatePDF() {
       // טבלת מעקב חודשית: שורה לכל יום, ולכל תפקיד תקן/בפועל/פער, ובסוף סה"כ פערים
       const gridDates = periodDateStrings(from, to);
       const HE_DOW = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
-      const gRoles = state.roles;
+      // סדר עמודות מבוקש לדוח (לא משנה את סדר התפקידים בשאר האפליקציה).
+      // תפקידים שאינם ברשימה יתווספו בסוף כדי לא לאבד עמודות אם יתווסף תפקיד חדש.
+      const MONTHLY_ROLE_ORDER = ['מנהל אתר','שף ראשי','סו-שף','טבח','טבח לילה','קונדיטור','עוזר קונדיטור','אחראי חדר אוכל','עובד כללי','עובד כללי לילה','מחסנאי'];
+      const gRoles = MONTHLY_ROLE_ORDER.filter(function(r){ return state.roles.includes(r); })
+        .concat(state.roles.filter(function(r){ return MONTHLY_ROLE_ORDER.indexOf(r) === -1; }));
       const roleGapTot = {}; gRoles.forEach(function(r){ roleGapTot[r] = 0; });
       let grandGap = 0;
 
