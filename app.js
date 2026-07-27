@@ -2274,7 +2274,11 @@ function generatePDF() {
       'tbody td { padding:7px 9px; border:1px solid #e8e0d0; text-align:center; }',
       "tbody td:first-child { text-align:right; font-weight:500; }",
       '.footer { margin-top:28px; text-align:center; font-size:9px; color:#b0a590; border-top:1px solid #e8e0d0; padding-top:8px; }',
-      '@media print { body { padding:10px; } @page { margin:12mm; } }'
+      '.toolbar { position:sticky; top:0; z-index:10; background:#1a1510; padding:10px 14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }',
+      '.tb-btn { background:#e8c547; color:#1a1510; border:none; border-radius:6px; padding:9px 20px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }',
+      '.tb-btn:hover { background:#f0d668; }',
+      '.tb-hint { color:#d8cba8; font-size:11px; }',
+      '@media print { .screen-only { display:none !important; } body { padding:10px; } @page { margin:12mm; } }'
     ].join('\n');
 
     if (reportType === 'monthly') {
@@ -2313,7 +2317,13 @@ function generatePDF() {
     var html = '<!DOCTYPE html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="UTF-8"/>\n'
       + '<title>דוח מערכת קבלן זרוע הים</title>\n'
       + '<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet"/>\n'
-      + '<style>' + style + '</style>\n</head>\n<body>\n<div id="printRoot">\n'
+      + '<style>' + style + '</style>\n</head>\n<body>\n'
+      + '<div class="toolbar screen-only">'
+      + '<button class="tb-btn" id="btnPrint">🖨️ הדפס</button>'
+      + '<button class="tb-btn" id="btnSave">💾 שמור כ-PDF</button>'
+      + '<span class="tb-hint">בחלון שייפתח בחר יעד: מדפסת להדפסה, או "שמירה כ-PDF (Save as PDF)" לשמירת קובץ.</span>'
+      + '</div>\n'
+      + '<div id="printRoot">\n'
       + '<div class="header">'
       + '<div class="org">מערכת ניהול קבלן — זרוע הים</div>'
       + '<div class="title">דוח נוכחות עובדים</div>'
@@ -2330,21 +2340,27 @@ function generatePDF() {
     win.document.close();
     win.focus();
     setTimeout(function() {
-      // התאמת-גודל אוטומטית: אם התוכן חורג מעמוד landscape אחד — מכווצים אותו כדי שייכנס בדף יחיד
+      // התאמת-גודל אוטומטית לעמוד הדפסה אחד
       try {
         if (reportType === 'monthly') {
           var root = win.document.getElementById('printRoot');
           if (root) {
             var pageW = (297 - 12) / 25.4 * 96;   // רוחב הדפסה נטו (landscape, שוליים 6 מ"מ)
             var pageH = (210 - 12) / 25.4 * 96;    // גובה הדפסה נטו
-            root.style.width = pageW + 'px';        // מדידה ברוחב ההדפסה האמיתי
+            root.style.width = pageW + 'px';
             if (root.scrollHeight > pageH) {
               root.style.zoom = (pageH / root.scrollHeight) * 0.98;
             }
           }
         }
       } catch (e) {}
-      win.print();
+      // חיווט הכפתורים — המשתמש בוחר להדפיס או לשמור (אין הדפסה אוטומטית)
+      try {
+        var bp = win.document.getElementById('btnPrint');
+        var bs = win.document.getElementById('btnSave');
+        if (bp) bp.onclick = function() { win.print(); };
+        if (bs) bs.onclick = function() { win.print(); };
+      } catch (e) {}
     }, 900);
 
   } catch(err) {
