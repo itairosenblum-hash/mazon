@@ -2433,7 +2433,7 @@ function generatePDF() {
         // הטבלה — פונט קטן וריווח מינימלי
         '.monthly-grid { font-size:8.5px; table-layout:auto; margin-bottom:0; }',
         '.monthly-grid th, .monthly-grid td { padding:1.5px 2px; border:0.75px solid #c8b890; line-height:1.3; white-space:nowrap; text-align:center; vertical-align:middle; }',
-        '.monthly-grid thead tr:first-child th { background:#e8c547; font-size:9px; white-space:normal; line-height:1.5; padding:6px 3px; }',
+        '.monthly-grid thead tr:first-child th { background:#e8c547; font-size:9px; white-space:normal; line-height:1.5; padding:11px 3px; }',
         '.monthly-grid thead tr:nth-child(2) th { background:#f2e6b8; font-size:6.5px; line-height:1.5; padding:2px 2px; }',
         '.monthly-grid td.datecol { white-space:nowrap; font-weight:700; text-align:center; }',
         '.monthly-grid tbody tr:nth-child(even) td { background:transparent; }',
@@ -2445,9 +2445,9 @@ function generatePDF() {
         '.sign-note { margin-top:10px; font-size:9.5px; line-height:1.5; text-align:justify; color:#1a1510; }',
         '.sign-note u { font-weight:700; text-underline-offset:1px; }',
         '.sign-box-wrap { margin-top:6px; display:flex; justify-content:flex-start; }',
-        '.sign-box { border:1px solid #1a1510; border-radius:3px; padding:4px 10px 5px; width:300px; }',
-        '.sign-box-label { font-size:9.5px; font-weight:700; margin-bottom:4px; }',
-        '.sign-box-space { height:40px; }',
+        '.sign-box { border:1px solid #1a1510; border-radius:3px; padding:3px 10px 4px; width:300px; }',
+        '.sign-box-label { font-size:9.5px; font-weight:700; margin-bottom:2px; }',
+        '.sign-box-space { height:28px; }',
         '.sign-box-name { font-size:9.5px; font-weight:700; line-height:1.45; }',
         '.footer { margin-top:6px; font-size:7px; padding-top:3px; }'
       ].join('\n');
