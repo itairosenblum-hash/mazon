@@ -2248,13 +2248,13 @@ function generatePDF() {
         + '<td style="font-weight:800;color:' + grandC + '">' + grandGap + '</td></tr></tfoot>'
         + '</table>';
 
-      body += '<div class="sign-note">'
+      body += '<div class="sign-area"><div class="sign-note">'
         + 'חתימת נציג היחידה על טופס הדיווח בגין הכמויות החודשיות המדווחות הינה <u>מחייבת</u> ובגדר אישור <u>להתחשבנות</u> ותשלום לספק. נא בדוק היטב את אמיתות הנתונים טרם החתימה.'
         + '</div>'
         + '<div class="sign-box-wrap"><div class="sign-box">'
         + '<div class="sign-box-label">חתימה וחותמת נציג היחידה המאשר:</div>'
         + '<div class="sign-box-space"></div>'
-        + '</div></div>';
+        + '</div></div></div>';
     }
 
     var style = [
@@ -2279,30 +2279,41 @@ function generatePDF() {
 
     if (reportType === 'monthly') {
       style += '\n' + [
-        '@page { size: A4 landscape; margin: 8mm; }',
-        'body { padding:14px; }',
-        '.monthly-grid { font-size:8.5px; table-layout:fixed; }',
-        '.monthly-grid th, .monthly-grid td { padding:2px 2px; border:1px solid #c8b890; }',
-        '.monthly-grid thead tr:first-child th { background:#e8c547; font-size:9px; }',
-        '.monthly-grid thead tr:nth-child(2) th { background:#f2e6b8; font-size:7.5px; padding:1px; }',
+        '@page { size: A4 landscape; margin: 6mm; }',
+        'body { padding:0; }',
+        '#printRoot { padding:2mm 1mm; }',
+        // דחיסת הכותרת כדי לפנות מקום לטבלה
+        '.header { padding-bottom:5px; margin-bottom:7px; border-bottom-width:2px; }',
+        '.org { font-size:8px; margin-bottom:1px; }',
+        '.title { font-size:15px; margin:1px 0; }',
+        '.subtitle { font-size:10px; }',
+        '.dates { font-size:8px; margin-top:2px; }',
+        // הטבלה — פונט קטן וריווח מינימלי
+        '.monthly-grid { font-size:7px; table-layout:fixed; margin-bottom:0; }',
+        '.monthly-grid th, .monthly-grid td { padding:0.5px 1px; border:0.75px solid #c8b890; line-height:1.1; }',
+        '.monthly-grid thead tr:first-child th { background:#e8c547; font-size:7.5px; }',
+        '.monthly-grid thead tr:nth-child(2) th { background:#f2e6b8; font-size:6px; padding:0.5px; }',
         '.monthly-grid td.datecol { white-space:nowrap; font-weight:700; text-align:center; }',
         '.monthly-grid tbody tr:nth-child(even) td { background:transparent; }',
         '.monthly-grid tbody tr.wknd td { background:#eee6cf; }',
         '.monthly-grid tbody tr.nodata td { background:#f7f7f7; color:#aaa; }',
-        '.monthly-grid tfoot tr.totals td { background:#e8c547; font-weight:800; border-top:2px solid #1a1510; }',
-        '.sign-note { margin-top:20px; font-size:11px; line-height:1.7; text-align:justify; color:#1a1510; }',
-        '.sign-note u { font-weight:700; text-underline-offset:2px; }',
-        '.sign-box-wrap { margin-top:16px; display:flex; justify-content:flex-start; }',
-        '.sign-box { border:1.5px solid #1a1510; border-radius:4px; padding:8px 14px 10px; width:320px; }',
-        '.sign-box-label { font-size:11px; font-weight:700; margin-bottom:8px; }',
-        '.sign-box-space { height:95px; }'
+        '.monthly-grid tfoot tr.totals td { background:#e8c547; font-weight:800; border-top:1.5px solid #1a1510; }',
+        // משפט האישור + ריבוע החתימה — קומפקטי, ולא נחתך בין עמודים
+        '.sign-area { page-break-inside:avoid; }',
+        '.sign-note { margin-top:8px; font-size:8px; line-height:1.35; text-align:justify; color:#1a1510; }',
+        '.sign-note u { font-weight:700; text-underline-offset:1px; }',
+        '.sign-box-wrap { margin-top:6px; display:flex; justify-content:flex-start; }',
+        '.sign-box { border:1px solid #1a1510; border-radius:3px; padding:4px 10px 5px; width:300px; }',
+        '.sign-box-label { font-size:8.5px; font-weight:700; margin-bottom:3px; }',
+        '.sign-box-space { height:42px; }',
+        '.footer { margin-top:6px; font-size:7px; padding-top:3px; }'
       ].join('\n');
     }
 
     var html = '<!DOCTYPE html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="UTF-8"/>\n'
       + '<title>דוח מערכת קבלן זרוע הים</title>\n'
       + '<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet"/>\n'
-      + '<style>' + style + '</style>\n</head>\n<body>\n'
+      + '<style>' + style + '</style>\n</head>\n<body>\n<div id="printRoot">\n'
       + '<div class="header">'
       + '<div class="org">מערכת ניהול קבלן — זרוע הים</div>'
       + '<div class="title">דוח נוכחות עובדים</div>'
@@ -2312,13 +2323,29 @@ function generatePDF() {
       + body
       + '\n<div class="footer">הופק ממערכת ניהול קבלן ים &nbsp;|&nbsp; '
       + new Date().toLocaleString('he-IL') + ' &nbsp;|&nbsp; כל הזכויות שמורות</div>'
-      + '\n</body>\n</html>';
+      + '\n</div>\n</body>\n</html>';
 
     var win = window.open('', '_blank');
     win.document.write(html);
     win.document.close();
     win.focus();
-    setTimeout(function() { win.print(); }, 900);
+    setTimeout(function() {
+      // התאמת-גודל אוטומטית: אם התוכן חורג מעמוד landscape אחד — מכווצים אותו כדי שייכנס בדף יחיד
+      try {
+        if (reportType === 'monthly') {
+          var root = win.document.getElementById('printRoot');
+          if (root) {
+            var pageW = (297 - 12) / 25.4 * 96;   // רוחב הדפסה נטו (landscape, שוליים 6 מ"מ)
+            var pageH = (210 - 12) / 25.4 * 96;    // גובה הדפסה נטו
+            root.style.width = pageW + 'px';        // מדידה ברוחב ההדפסה האמיתי
+            if (root.scrollHeight > pageH) {
+              root.style.zoom = (pageH / root.scrollHeight) * 0.98;
+            }
+          }
+        }
+      } catch (e) {}
+      win.print();
+    }, 900);
 
   } catch(err) {
     console.error('PDF error:', err);
