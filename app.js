@@ -2429,10 +2429,10 @@ function generatePDF() {
         '.subtitle { font-size:10px; }',
         '.dates { font-size:8px; margin-top:2px; }',
         // הטבלה — פונט קטן וריווח מינימלי
-        '.monthly-grid { font-size:7px; table-layout:fixed; margin-bottom:0; }',
-        '.monthly-grid th, .monthly-grid td { padding:0.5px 1px; border:0.75px solid #c8b890; line-height:1.1; }',
-        '.monthly-grid thead tr:first-child th { background:#e8c547; font-size:7.5px; }',
-        '.monthly-grid thead tr:nth-child(2) th { background:#f2e6b8; font-size:6px; padding:0.5px; }',
+        '.monthly-grid { font-size:7px; table-layout:auto; margin-bottom:0; }',
+        '.monthly-grid th, .monthly-grid td { padding:0.5px 3px; border:0.75px solid #c8b890; line-height:1.1; white-space:nowrap; text-align:center; }',
+        '.monthly-grid thead tr:first-child th { background:#e8c547; font-size:7.5px; white-space:normal; word-break:break-word; }',
+        '.monthly-grid thead tr:nth-child(2) th { background:#f2e6b8; font-size:6px; padding:0.5px 2px; }',
         '.monthly-grid td.datecol { white-space:nowrap; font-weight:700; text-align:center; }',
         '.monthly-grid tbody tr:nth-child(even) td { background:transparent; }',
         '.monthly-grid tbody tr.wknd td { background:#eee6cf; }',
@@ -2484,9 +2484,10 @@ function generatePDF() {
             var pageW = (297 - 12) / 25.4 * 96;   // רוחב הדפסה נטו (landscape, שוליים 6 מ"מ)
             var pageH = (210 - 12) / 25.4 * 96;    // גובה הדפסה נטו
             root.style.width = pageW + 'px';
-            if (root.scrollHeight > pageH) {
-              root.style.zoom = (pageH / root.scrollHeight) * 0.98;
-            }
+            var scaleW = root.scrollWidth  > pageW ? pageW / root.scrollWidth  : 1;
+            var scaleH = root.scrollHeight > pageH ? pageH / root.scrollHeight : 1;
+            var sc = Math.min(scaleW, scaleH);
+            if (sc < 1) { root.style.zoom = sc * 0.98; }
           }
         }
       } catch (e) {}
