@@ -2141,7 +2141,7 @@ function generatePDF() {
     // בסופ"ש/חג ללא דיווח - מניחים בפועל = תקן סופ"ש/חג
     entries = injectVirtualEntries(entries, stations, periodDateStrings(from, to));
 
-    const typeLabel = {summary:'סיכום לפי תחנה', daily:'פירוט יומי', roles:'פירוט לפי תפקיד'}[reportType] || '';
+    const typeLabel = {summary:'סיכום לפי תחנה', daily:'פירוט יומי', roles:'פירוט לפי תפקיד', monthly:'טבלת מעקב חודשית'}[reportType] || '';
 
     let body = '';
 
@@ -2215,6 +2215,70 @@ function generatePDF() {
       body += '<h2 class="section-title">פירוט לפי תפקיד</h2>'
         + '<table><thead><tr><th>תפקיד</th><th>סה"כ</th><th>ממוצע/יום</th><th>נדרש/יום</th><th>פער</th></tr></thead>'
         + '<tbody>' + rRows + '</tbody></table>';
+
+    } else if (reportType === 'monthly') {
+      // טבלת מעקב חודשית: שורה לכל יום, ולכל תפקיד תקן/בפועל/פער, ובסוף סה"כ פערים
+      const gridDates = periodDateStrings(from, to);
+      const HE_DOW = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+      const gRoles = state.roles;
+      const roleGapTot = {}; gRoles.forEach(function(r){ roleGapTot[r] = 0; });
+      let grandGap = 0;
+
+      const gRows = gridDates.map(function(ds) {
+        const p = ds.split('-');
+        const dObj = new Date(+p[0], +p[1] - 1, +p[2]);
+        const dow = HE_DOW[dObj.getDay()];
+        const dmy = String(dObj.getDate()).padStart(2,'0') + '/' + String(dObj.getMonth()+1).padStart(2,'0') + '/' + dObj.getFullYear();
+        const de = entries.filter(function(e){ return e.date === ds; });
+        const reportedIds = new Set(de.map(function(e){ return e.stationId; }));
+        const dayStations = stations.filter(function(s){ return reportedIds.has(s.id); });
+        const hasData = dayStations.length > 0;
+
+        let dayGap = 0;
+        const cells = gRoles.map(function(role) {
+          if (!hasData) {
+            // יום ללא דיווח (יום חול) — מציגים תקן להתייחסות אך לא סופרים פער
+            const refReq = stations.reduce(function(s,st){ return s + (getStandard(st, ds)[role] || 0); }, 0);
+            return '<td>' + refReq + '</td><td>—</td><td>—</td>';
+          }
+          const req = dayStations.reduce(function(s,st){ return s + (getStandard(st, ds)[role] || 0); }, 0);
+          const act = de.reduce(function(s,e){ return s + (e.counts[role] || 0); }, 0);
+          const gap = req - act;
+          dayGap += gap;
+          roleGapTot[role] += gap;
+          const gc = gap > 0 ? '#c00' : gap < 0 ? '#1a7a1a' : '#555';
+          return '<td>' + req + '</td><td>' + act + '</td><td style="font-weight:700;color:' + gc + '">' + gap + '</td>';
+        }).join('');
+
+        let totCell;
+        if (hasData) {
+          grandGap += dayGap;
+          const tc = dayGap > 0 ? '#c00' : dayGap < 0 ? '#1a7a1a' : '#555';
+          totCell = '<td style="font-weight:700;color:' + tc + '">' + dayGap + '</td>';
+        } else {
+          totCell = '<td>—</td>';
+        }
+
+        const cls = isSpecialDay(ds) ? ' class="wknd"' : (hasData ? '' : ' class="nodata"');
+        return '<tr' + cls + '><td class="datecol">' + dmy + '</td><td>' + dow + '</td>' + cells + totCell + '</tr>';
+      }).join('');
+
+      const headTop  = gRoles.map(function(r){ return '<th colspan="3">' + escapeHtml(r) + '</th>'; }).join('');
+      const headSub  = gRoles.map(function(){ return '<th>תקן</th><th>בפועל</th><th>פער</th>'; }).join('');
+      const footCells = gRoles.map(function(r){
+        const g = roleGapTot[r];
+        const gc = g > 0 ? '#c00' : g < 0 ? '#1a7a1a' : '#555';
+        return '<td></td><td></td><td style="font-weight:700;color:' + gc + '">' + g + '</td>';
+      }).join('');
+      const grandC = grandGap > 0 ? '#c00' : grandGap < 0 ? '#1a7a1a' : '#555';
+
+      body += '<table class="monthly-grid">'
+        + '<thead><tr><th rowspan="2">תאריך</th><th rowspan="2">יום</th>' + headTop + '<th rowspan="2">סה"כ פער</th></tr>'
+        + '<tr>' + headSub + '</tr></thead>'
+        + '<tbody>' + gRows + '</tbody>'
+        + '<tfoot><tr class="totals"><td colspan="2">סה"כ פערים</td>' + footCells
+        + '<td style="font-weight:800;color:' + grandC + '">' + grandGap + '</td></tr></tfoot>'
+        + '</table>';
     }
 
     var style = [
@@ -2236,6 +2300,22 @@ function generatePDF() {
       '.footer { margin-top:28px; text-align:center; font-size:9px; color:#b0a590; border-top:1px solid #e8e0d0; padding-top:8px; }',
       '@media print { body { padding:10px; } @page { margin:12mm; } }'
     ].join('\n');
+
+    if (reportType === 'monthly') {
+      style += '\n' + [
+        '@page { size: A4 landscape; margin: 8mm; }',
+        'body { padding:14px; }',
+        '.monthly-grid { font-size:8.5px; table-layout:fixed; }',
+        '.monthly-grid th, .monthly-grid td { padding:2px 2px; border:1px solid #c8b890; }',
+        '.monthly-grid thead tr:first-child th { background:#e8c547; font-size:9px; }',
+        '.monthly-grid thead tr:nth-child(2) th { background:#f2e6b8; font-size:7.5px; padding:1px; }',
+        '.monthly-grid td.datecol { white-space:nowrap; font-weight:700; text-align:center; }',
+        '.monthly-grid tbody tr:nth-child(even) td { background:transparent; }',
+        '.monthly-grid tbody tr.wknd td { background:#eee6cf; }',
+        '.monthly-grid tbody tr.nodata td { background:#f7f7f7; color:#aaa; }',
+        '.monthly-grid tfoot tr.totals td { background:#e8c547; font-weight:800; border-top:2px solid #1a1510; }'
+      ].join('\n');
+    }
 
     var html = '<!DOCTYPE html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="UTF-8"/>\n'
       + '<title>דוח מערכת קבלן זרוע הים</title>\n'
