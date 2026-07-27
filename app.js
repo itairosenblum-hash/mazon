@@ -2453,11 +2453,13 @@ function generatePDF() {
     var html = '<!DOCTYPE html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="UTF-8"/>\n'
       + '<title>דוח מערכת קבלן זרוע הים</title>\n'
       + '<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet"/>\n'
+      + '<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>\n'
+      + '<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>\n'
       + '<style>' + style + '</style>\n</head>\n<body>\n'
       + '<div class="toolbar screen-only">'
       + '<button class="tb-btn" id="btnPrint">🖨️ הדפס</button>'
       + '<button class="tb-btn" id="btnSave">💾 שמור כ-PDF</button>'
-      + '<span class="tb-hint">בחלון שייפתח בחר יעד: מדפסת להדפסה, או "שמירה כ-PDF (Save as PDF)" לשמירת קובץ.</span>'
+      + '<span class="tb-hint">"הדפס" פותח חלון הדפסה · "שמור כ-PDF" מוריד את הקובץ ישירות למחשב.</span>'
       + '</div>\n'
       + '<div id="printRoot">\n'
       + '<div class="header">'
@@ -2470,6 +2472,8 @@ function generatePDF() {
       + '\n<div class="footer">הופק ממערכת ניהול קבלן ים &nbsp;|&nbsp; '
       + new Date().toLocaleString('he-IL') + ' &nbsp;|&nbsp; כל הזכויות שמורות</div>'
       + '\n</div>\n</body>\n</html>';
+
+    var fileName = 'דוח נוכחות עובדים ' + HE_MONTHS[from.getMonth()] + ' ' + from.getFullYear() + '.pdf';
 
     var win = window.open('', '_blank');
     win.document.write(html);
@@ -2491,12 +2495,45 @@ function generatePDF() {
           }
         }
       } catch (e) {}
-      // חיווט הכפתורים — המשתמש בוחר להדפיס או לשמור (אין הדפסה אוטומטית)
+      // חיווט הכפתורים
       try {
         var bp = win.document.getElementById('btnPrint');
         var bs = win.document.getElementById('btnSave');
         if (bp) bp.onclick = function() { win.print(); };
-        if (bs) bs.onclick = function() { win.print(); };
+        if (bs) bs.onclick = function() {
+          var r = win.document.getElementById('printRoot');
+          var h2c = win.html2canvas;
+          var jspdfNS = win.jspdf;
+          if (!r || !h2c || !jspdfNS || !jspdfNS.jsPDF) {
+            // הספריות לא נטענו (למשל אין אינטרנט) — נפילה-לאחור לחלון הדפסה
+            alert('לא ניתן להוריד ישירות כרגע — נפתח חלון הדפסה, בחר שם "שמירה כ-PDF".');
+            win.print();
+            return;
+          }
+          if (bs) { bs.disabled = true; bs.textContent = '⏳ מכין קובץ...'; }
+          var prevZoom = r.style.zoom;
+          r.style.zoom = '';   // לוכדים בגודל מלא; ההתאמה לעמוד נעשית ב-PDF עצמו
+          h2c(r, { scale: 3, backgroundColor: '#ffffff', useCORS: true }).then(function(canvas) {
+            r.style.zoom = prevZoom;
+            var JsPDF = jspdfNS.jsPDF;
+            var pdf = new JsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            var pw = pdf.internal.pageSize.getWidth();
+            var ph = pdf.internal.pageSize.getHeight();
+            var margin = 6, availW = pw - 2*margin, availH = ph - 2*margin;
+            var ratio = Math.min(availW / canvas.width, availH / canvas.height); // התאמה לעמוד אחד
+            var w = canvas.width * ratio, h = canvas.height * ratio;
+            var x = margin + (availW - w) / 2, y = margin;
+            pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', x, y, w, h);
+            pdf.save(fileName);
+            if (bs) { bs.disabled = false; bs.textContent = '💾 שמור כ-PDF'; }
+          }).catch(function(err) {
+            r.style.zoom = prevZoom;
+            if (bs) { bs.disabled = false; bs.textContent = '💾 שמור כ-PDF'; }
+            console.error('PDF download error:', err);
+            alert('אירעה תקלה בהורדה — נפתח חלון הדפסה כגיבוי.');
+            win.print();
+          });
+        };
       } catch (e) {}
     }, 900);
 
