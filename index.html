@@ -19,7 +19,7 @@
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="style.css?v=20260721c" />
+  <link rel="stylesheet" href="style.css?v=20260727a" />
 
   <!-- PWA -->
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
@@ -130,6 +130,7 @@
       <li><a href="#" class="nav-link" data-page="history"><span class="nav-icon">📋</span> היסטוריה</a></li>
       <li data-admin-only><a href="#" class="nav-link" data-page="stations"><span class="nav-icon">🏪</span> ניהול תחנות</a></li>
       <li data-admin-only><a href="#" class="nav-link" data-page="reports"><span class="nav-icon">📄</span> דוחות PDF</a></li>
+      <li data-admin-only><a href="#" class="nav-link" data-page="missing"><span class="nav-icon">⚠️</span> ימים חסרים</a></li>
       <li data-admin-only><a href="#" class="nav-link" data-page="users"><span class="nav-icon">👥</span> ניהול משתמשים</a></li>
       <li data-admin-only><a href="#" class="nav-link" data-page="messages"><span class="nav-icon">💬</span> הודעות</a></li>
       <li data-admin-only><a href="#" class="nav-link" data-page="settings"><span class="nav-icon">⚙️</span> הגדרות</a></li>
@@ -429,6 +430,26 @@
       </div>
     </section>
 
+    <!-- MISSING DAYS PAGE (Admin only) -->
+    <section class="page" id="page-missing">
+      <div class="page-header">
+        <h2 class="page-title"><span class="page-icon">⚠️</span> ימים חסרים</h2>
+      </div>
+
+      <div class="reports-card">
+        <div class="reports-section-title">📅 ימי עבודה שלא מולאו — לפי תחנה</div>
+
+        <div class="form-group">
+          <label>בחר חודש</label>
+          <input type="month" id="missingMonth" class="period-select" onchange="renderMissingDays()" />
+        </div>
+
+        <div class="missing-hint">נספרים רק ימי עבודה (א׳–ה׳, ללא שבת/חג) עד היום. סופ״ש וחגים מונחים אוטומטית ואינם נחשבים חסרים.</div>
+      </div>
+
+      <div id="missingList"></div>
+    </section>
+
     <!-- MESSAGES PAGE (Admin only) -->
     <div class="page" id="page-messages">
       <div class="page-header">
@@ -523,7 +544,7 @@ function togglePasswordVisibility() {
 }
 </script>
 <script async src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" onload="window.dispatchEvent(new Event('chartjs-ready'))"></script>
-<script defer src="app.js?v=20260727g"></script>
+<script defer src="app.js?v=20260727h"></script>
 
 </body>
 </html>
