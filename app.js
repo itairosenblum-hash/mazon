@@ -2426,15 +2426,15 @@ function generatePDF() {
         '#printRoot { padding:2mm 1mm; }',
         // דחיסת הכותרת כדי לפנות מקום לטבלה
         '.header { padding-bottom:5px; margin-bottom:7px; border-bottom-width:2px; }',
-        '.org { font-size:8px; margin-bottom:1px; }',
-        '.title { font-size:15px; margin:1px 0; }',
-        '.subtitle { font-size:10px; }',
-        '.dates { font-size:8px; margin-top:2px; }',
+        '.org { font-size:9px; margin-bottom:2px; }',
+        '.title { font-size:18px; margin:2px 0; }',
+        '.subtitle { font-size:11.5px; }',
+        '.dates { font-size:9px; margin-top:3px; }',
         // הטבלה — פונט קטן וריווח מינימלי
-        '.monthly-grid { font-size:7px; table-layout:auto; margin-bottom:0; }',
-        '.monthly-grid th, .monthly-grid td { padding:0.5px 3px; border:0.75px solid #c8b890; line-height:1.1; white-space:nowrap; text-align:center; }',
-        '.monthly-grid thead tr:first-child th { background:#e8c547; font-size:7.5px; white-space:normal; word-break:break-word; }',
-        '.monthly-grid thead tr:nth-child(2) th { background:#f2e6b8; font-size:6px; padding:0.5px 2px; }',
+        '.monthly-grid { font-size:8.5px; table-layout:auto; margin-bottom:0; }',
+        '.monthly-grid th, .monthly-grid td { padding:1.5px 5px; border:0.75px solid #c8b890; line-height:1.3; white-space:nowrap; text-align:center; }',
+        '.monthly-grid thead tr:first-child th { background:#e8c547; font-size:9px; white-space:normal; word-break:break-word; }',
+        '.monthly-grid thead tr:nth-child(2) th { background:#f2e6b8; font-size:7.5px; padding:1.5px 3px; }',
         '.monthly-grid td.datecol { white-space:nowrap; font-weight:700; text-align:center; }',
         '.monthly-grid tbody tr:nth-child(even) td { background:transparent; }',
         '.monthly-grid tbody tr.wknd td { background:#eee6cf; }',
@@ -2442,13 +2442,13 @@ function generatePDF() {
         '.monthly-grid tfoot tr.totals td { background:#e8c547; font-weight:800; border-top:1.5px solid #1a1510; }',
         // משפט האישור + ריבוע החתימה — קומפקטי, ולא נחתך בין עמודים
         '.sign-area { page-break-inside:avoid; }',
-        '.sign-note { margin-top:8px; font-size:8px; line-height:1.35; text-align:justify; color:#1a1510; }',
+        '.sign-note { margin-top:10px; font-size:9.5px; line-height:1.5; text-align:justify; color:#1a1510; }',
         '.sign-note u { font-weight:700; text-underline-offset:1px; }',
         '.sign-box-wrap { margin-top:6px; display:flex; justify-content:flex-start; }',
         '.sign-box { border:1px solid #1a1510; border-radius:3px; padding:4px 10px 5px; width:300px; }',
-        '.sign-box-label { font-size:8.5px; font-weight:700; margin-bottom:3px; }',
-        '.sign-box-space { height:46px; }',
-        '.sign-box-name { font-size:8.5px; font-weight:700; line-height:1.4; }',
+        '.sign-box-label { font-size:9.5px; font-weight:700; margin-bottom:4px; }',
+        '.sign-box-space { height:40px; }',
+        '.sign-box-name { font-size:9.5px; font-weight:700; line-height:1.45; }',
         '.footer { margin-top:6px; font-size:7px; padding-top:3px; }'
       ].join('\n');
     }
