@@ -2377,7 +2377,7 @@ function generatePDF() {
       const grandC = grandGap > 0 ? '#c00' : grandGap < 0 ? '#1a7a1a' : '#555';
 
       body += '<table class="monthly-grid">'
-        + '<thead><tr><th rowspan="2">תאריך</th><th rowspan="2">יום</th>' + headTop + '<th rowspan="2">סה"כ פער</th></tr>'
+        + '<thead><tr><th rowspan="2">תאריך</th><th rowspan="2">יום</th>' + headTop + '<th rowspan="2">סה״כ</th></tr>'
         + '<tr>' + headSub + '</tr></thead>'
         + '<tbody>' + gRows + '</tbody>'
         + '<tfoot><tr class="totals"><td colspan="2">סה"כ פערים</td>' + footCells
@@ -2490,10 +2490,15 @@ function generatePDF() {
           if (root) {
             var pageW = (297 - 12) / 25.4 * 96;   // רוחב הדפסה נטו (landscape, שוליים 6 מ"מ)
             var pageH = (210 - 12) / 25.4 * 96;    // גובה הדפסה נטו
-            root.style.width = pageW + 'px';
+            root.style.width = pageW + 'px';        // מדידה ברוחב ההדפסה
             var scaleW = root.scrollWidth  > pageW ? pageW / root.scrollWidth  : 1;
             var scaleH = root.scrollHeight > pageH ? pageH / root.scrollHeight : 1;
             var sc = Math.min(scaleW, scaleH);
+            // תצוגה רספונסיבית: לא לחרוג מרוחב החלון (מונע חיתוך בתצוגה); בהדפסה @page קובע את הרוחב
+            root.style.width = '100%';
+            root.style.maxWidth = pageW + 'px';
+            root.style.marginLeft = 'auto';
+            root.style.marginRight = 'auto';
             if (sc < 1) { root.style.zoom = sc * 0.98; }
           }
         }
@@ -2514,10 +2519,13 @@ function generatePDF() {
             return;
           }
           if (bs) { bs.disabled = true; bs.textContent = '⏳ מכין קובץ...'; }
-          var prevZoom = r.style.zoom;
-          r.style.zoom = '';   // לוכדים בגודל מלא; ההתאמה לעמוד נעשית ב-PDF עצמו
+          var prevZoom = r.style.zoom, prevW = r.style.width, prevMaxW = r.style.maxWidth;
+          var capW = (297 - 12) / 25.4 * 96;
+          r.style.zoom = '';                 // לוכדים בגודל מלא
+          r.style.maxWidth = 'none';
+          r.style.width = capW + 'px';        // רוחב הדפסה קבוע — לכידה עקבית
           h2c(r, { scale: 3, backgroundColor: '#ffffff', useCORS: true }).then(function(canvas) {
-            r.style.zoom = prevZoom;
+            r.style.zoom = prevZoom; r.style.width = prevW; r.style.maxWidth = prevMaxW;
             var JsPDF = jspdfNS.jsPDF;
             var pdf = new JsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
             var pw = pdf.internal.pageSize.getWidth();
@@ -2530,7 +2538,7 @@ function generatePDF() {
             pdf.save(fileName);
             if (bs) { bs.disabled = false; bs.textContent = '💾 שמור כ-PDF'; }
           }).catch(function(err) {
-            r.style.zoom = prevZoom;
+            r.style.zoom = prevZoom; r.style.width = prevW; r.style.maxWidth = prevMaxW;
             if (bs) { bs.disabled = false; bs.textContent = '💾 שמור כ-PDF'; }
             console.error('PDF download error:', err);
             alert('אירעה תקלה בהורדה — נפתח חלון הדפסה כגיבוי.');
