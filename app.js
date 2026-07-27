@@ -2279,6 +2279,14 @@ function generatePDF() {
         + '<tfoot><tr class="totals"><td colspan="2">סה"כ פערים</td>' + footCells
         + '<td style="font-weight:800;color:' + grandC + '">' + grandGap + '</td></tr></tfoot>'
         + '</table>';
+
+      body += '<div class="sign-note">'
+        + 'חתימת נציג היחידה על טופס הדיווח בגין הכמויות החודשיות המדווחות הינה <u>מחייבת</u> ובגדר אישור <u>להתחשבנות</u> ותשלום לספק. נא בדוק היטב את אמיתות הנתונים טרם החתימה.'
+        + '</div>'
+        + '<div class="sign-box-wrap"><div class="sign-box">'
+        + '<div class="sign-box-label">חתימה וחותמת נציג היחידה המאשר:</div>'
+        + '<div class="sign-box-space"></div>'
+        + '</div></div>';
     }
 
     var style = [
@@ -2313,7 +2321,13 @@ function generatePDF() {
         '.monthly-grid tbody tr:nth-child(even) td { background:transparent; }',
         '.monthly-grid tbody tr.wknd td { background:#eee6cf; }',
         '.monthly-grid tbody tr.nodata td { background:#f7f7f7; color:#aaa; }',
-        '.monthly-grid tfoot tr.totals td { background:#e8c547; font-weight:800; border-top:2px solid #1a1510; }'
+        '.monthly-grid tfoot tr.totals td { background:#e8c547; font-weight:800; border-top:2px solid #1a1510; }',
+        '.sign-note { margin-top:20px; font-size:11px; line-height:1.7; text-align:justify; color:#1a1510; }',
+        '.sign-note u { font-weight:700; text-underline-offset:2px; }',
+        '.sign-box-wrap { margin-top:16px; display:flex; justify-content:flex-start; }',
+        '.sign-box { border:1.5px solid #1a1510; border-radius:4px; padding:8px 14px 10px; width:320px; }',
+        '.sign-box-label { font-size:11px; font-weight:700; margin-bottom:8px; }',
+        '.sign-box-space { height:95px; }'
       ].join('\n');
     }
 
