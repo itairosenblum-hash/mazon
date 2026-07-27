@@ -2390,6 +2390,8 @@ function generatePDF() {
         + '<div class="sign-box-wrap"><div class="sign-box">'
         + '<div class="sign-box-label">חתימה וחותמת נציג היחידה המאשר:</div>'
         + '<div class="sign-box-space"></div>'
+        + '<div class="sign-box-name">רנ"ג אילן אסולין ק/5267499</div>'
+        + '<div class="sign-box-name">רמ"ד מזון זרוע הים</div>'
         + '</div></div></div>';
     }
 
@@ -2445,7 +2447,8 @@ function generatePDF() {
         '.sign-box-wrap { margin-top:6px; display:flex; justify-content:flex-start; }',
         '.sign-box { border:1px solid #1a1510; border-radius:3px; padding:4px 10px 5px; width:300px; }',
         '.sign-box-label { font-size:8.5px; font-weight:700; margin-bottom:3px; }',
-        '.sign-box-space { height:42px; }',
+        '.sign-box-space { height:46px; }',
+        '.sign-box-name { font-size:8.5px; font-weight:700; line-height:1.4; }',
         '.footer { margin-top:6px; font-size:7px; padding-top:3px; }'
       ].join('\n');
     }
