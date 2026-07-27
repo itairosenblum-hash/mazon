@@ -448,7 +448,7 @@ let currentPage = 'dashboard';
 let editingStationId = null;
 
 function navigate(page) {
-  if (!isAdmin() && ['stations','settings','users','reports'].includes(page)) {
+  if (!isAdmin() && ['stations','settings','users','reports','missing'].includes(page)) {
     page = 'dashboard';
   }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -494,6 +494,7 @@ function renderPage(page) {
     if (page === 'settings')  renderSettings();
     if (page === 'users')     renderUsers();
     if (page === 'reports')   renderReports();
+    if (page === 'missing')   renderMissingDays();
     if (page === 'messages')  renderMessages();
   } catch (e) {
     console.error('renderPage error [' + page + ']:', e);
@@ -2039,6 +2040,141 @@ function renderReports() {
   const now = new Date();
   const monthEl = document.getElementById('reportMonth');
   if (monthEl && !monthEl.value) monthEl.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+}
+
+// ─────────────────────────────────────────────
+// MISSING DAYS PAGE (Admin only)
+// ─────────────────────────────────────────────
+
+// ימי עבודה (א׳–ה׳, ללא שבת/חג) בחודש נתון, עד היום (כולל היום)
+function workingDaysInMonth(monthStr) {
+  const m = /^(\d{4})-(\d{2})$/.exec(monthStr || '');
+  const now = new Date();
+  const y = m ? +m[1] : now.getFullYear();
+  const mo = m ? +m[2] - 1 : now.getMonth();
+  const todayStr = toLocalDateStr(now);
+  const lastDay = new Date(y, mo + 1, 0).getDate();
+  const out = [];
+  for (let d = 1; d <= lastDay; d++) {
+    const ds = toLocalDateStr(new Date(y, mo, d));
+    if (ds > todayStr) break;              // עתיד — לא נספר
+    if (isSpecialDay(ds)) continue;        // שבת/חג/ערב חג — מונח אוטומטית
+    out.push(ds);
+  }
+  return out;
+}
+
+// הימים החסרים לתחנה מסוימת מתוך רשימת ימי העבודה
+function missingDaysForStation(stationId, workDays) {
+  const reported = new Set(
+    activeEntries().filter(e => e.stationId === stationId).map(e => e.date)
+  );
+  return workDays.filter(ds => !reported.has(ds));
+}
+
+const HE_DOW_FULL = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+function formatHeDate(ds) {
+  const p = ds.split('-');
+  const d = new Date(+p[0], +p[1] - 1, +p[2]);
+  return 'יום ' + HE_DOW_FULL[d.getDay()] + ' ' +
+    String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+}
+
+function renderMissingDays() {
+  const list = document.getElementById('missingList');
+  if (!list) return;
+
+  // ברירת מחדל: החודש הנוכחי
+  const now = new Date();
+  const monthEl = document.getElementById('missingMonth');
+  if (monthEl && !monthEl.value) monthEl.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const monthStr = monthEl ? monthEl.value : (now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0'));
+
+  const workDays = workingDaysInMonth(monthStr);
+  const stations = (state && state.stations) ? state.stations : [];
+
+  if (!stations.length) {
+    list.innerHTML = '<div class="missing-card"><div class="missing-empty">אין תחנות במערכת.</div></div>';
+    return;
+  }
+  if (!workDays.length) {
+    list.innerHTML = '<div class="missing-card"><div class="missing-empty">אין ימי עבודה שחלפו בחודש זה.</div></div>';
+    return;
+  }
+
+  let totalMissing = 0, stationsWithMissing = 0;
+  const cards = stations.map(function(st) {
+    const missing = missingDaysForStation(st.id, workDays);
+    if (missing.length) { totalMissing += missing.length; stationsWithMissing++; }
+
+    // מנהלי התחנה (משתמשים לא-אדמין המשויכים לתחנה)
+    const managers = (state.users || []).filter(function(u){
+      return u.role !== 'admin' && (u.stationIds || []).includes(st.id);
+    });
+
+    if (!missing.length) {
+      return '<div class="missing-card ok">'
+        + '<div class="missing-card-head"><span class="missing-station">' + escapeHtml(st.name) + '</span>'
+        + '<span class="missing-badge ok">✓ הכל מולא</span></div></div>';
+    }
+
+    const chips = missing.map(function(ds){ return '<span class="missing-chip">' + formatHeDate(ds) + '</span>'; }).join('');
+
+    let reminder = '';
+    const withPhone = managers.filter(function(u){ return !!u.phone; });
+    if (withPhone.length) {
+      reminder = '<div class="missing-remind">' + withPhone.map(function(u){
+        return '<button class="missing-remind-btn" onclick="sendMissingDaysReminder(\'' + u.id + '\',\'' + st.id + '\')">'
+          + '📲 שלח תזכורת ל-' + escapeHtml(u.name) + '</button>';
+      }).join('') + '</div>';
+    } else if (managers.length) {
+      reminder = '<div class="missing-nophone">⚠️ למנהל התחנה אין מספר טלפון — הוסף בניהול משתמשים כדי לשלוח תזכורת.</div>';
+    } else {
+      reminder = '<div class="missing-nophone">⚠️ לא משויך מנהל לתחנה זו.</div>';
+    }
+
+    return '<div class="missing-card has-missing">'
+      + '<div class="missing-card-head"><span class="missing-station">' + escapeHtml(st.name) + '</span>'
+      + '<span class="missing-badge miss">' + missing.length + ' ימים חסרים</span></div>'
+      + '<div class="missing-days">' + chips + '</div>'
+      + reminder
+      + '</div>';
+  }).join('');
+
+  const summary = '<div class="missing-summary">'
+    + (totalMissing === 0
+        ? '🎉 כל התחנות מולאו במלואן בחודש זה (' + workDays.length + ' ימי עבודה).'
+        : 'סה״כ <strong>' + totalMissing + '</strong> ימים חסרים ב-<strong>' + stationsWithMissing + '</strong> תחנות · מתוך ' + workDays.length + ' ימי עבודה בחודש.')
+    + '</div>';
+
+  list.innerHTML = summary + cards;
+}
+
+function sendMissingDaysReminder(userId, stationId) {
+  const u = (state.users || []).find(function(x){ return x.id === userId; });
+  if (!u) return;
+  const phone = formatPhoneForWhatsapp(u.phone);
+  if (!phone) { alert('אין מספר טלפון למשתמש זה'); return; }
+  const st = getStation(stationId);
+  const stName = st ? st.name : 'התחנה';
+
+  const monthEl = document.getElementById('missingMonth');
+  const now = new Date();
+  const monthStr = monthEl && monthEl.value ? monthEl.value : (now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0'));
+  const mp = monthStr.split('-');
+  const monthLabel = HE_MONTHS[(+mp[1]) - 1] + ' ' + mp[0];
+
+  const missing = missingDaysForStation(stationId, workingDaysInMonth(monthStr));
+  if (!missing.length) { alert('אין ימים חסרים לתחנה זו בחודש הנבחר.'); return; }
+
+  const daysList = missing.map(function(ds){ return '• ' + formatHeDate(ds); }).join('\n');
+  const msg = 'שלום ' + u.name + ' 👋\n\n'
+    + 'תזכורת: חסרים דיווחי נוכחות עבור "' + stName + '" בחודש ' + monthLabel + ':\n'
+    + daysList + '\n\n'
+    + 'נא להשלים את הדיווחים החסרים בהקדם 🙏\n'
+    + 'https://itairosenblum-hash.github.io/mazon/';
+
+  window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
 }
 
 function getReportDateRange() {
