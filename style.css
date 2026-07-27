@@ -1784,3 +1784,23 @@ tr:hover td { background: var(--bg3); }
   font-family: inherit;
   padding: 4px;
 }
+
+/* ── עמוד ימים חסרים ── */
+.missing-hint { font-size: 0.78rem; color: var(--text2); margin-top: 0.5rem; line-height: 1.5; }
+.missing-summary { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.9rem 1.1rem; margin-bottom: 1rem; font-size: 0.9rem; color: var(--text); }
+.missing-summary strong { color: var(--accent); }
+.missing-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.1rem; margin-bottom: 0.8rem; }
+.missing-card.has-missing { border-right: 3px solid var(--orange); }
+.missing-card.ok { border-right: 3px solid var(--green); opacity: 0.85; }
+.missing-card-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.missing-station { font-size: 1rem; font-weight: 700; color: var(--text); }
+.missing-badge { font-size: 0.78rem; font-weight: 700; padding: 0.25rem 0.7rem; border-radius: 999px; white-space: nowrap; }
+.missing-badge.miss { background: rgba(224,122,58,0.15); color: var(--orange); }
+.missing-badge.ok { background: rgba(82,192,122,0.15); color: var(--green); }
+.missing-days { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.8rem; }
+.missing-chip { font-size: 0.76rem; background: var(--bg3); border: 1px solid var(--border); color: var(--text2); padding: 0.28rem 0.6rem; border-radius: 6px; white-space: nowrap; }
+.missing-remind { margin-top: 0.9rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.missing-remind-btn { background: #25d366; color: #fff; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-size: 0.82rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+.missing-remind-btn:hover { background: #1eb958; }
+.missing-nophone { margin-top: 0.8rem; font-size: 0.78rem; color: var(--text2); }
+.missing-empty { color: var(--text2); font-size: 0.9rem; text-align: center; padding: 0.5rem; }
