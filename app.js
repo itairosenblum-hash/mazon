@@ -2432,9 +2432,9 @@ function generatePDF() {
         '.dates { font-size:9px; margin-top:3px; }',
         // הטבלה — פונט קטן וריווח מינימלי
         '.monthly-grid { font-size:8.5px; table-layout:auto; margin-bottom:0; }',
-        '.monthly-grid th, .monthly-grid td { padding:1.5px 2px; border:0.75px solid #c8b890; line-height:1.3; white-space:nowrap; text-align:center; }',
-        '.monthly-grid thead tr:first-child th { background:#e8c547; font-size:9px; white-space:normal; word-break:break-word; }',
-        '.monthly-grid thead tr:nth-child(2) th { background:#f2e6b8; font-size:6.5px; padding:1px 2px; }',
+        '.monthly-grid th, .monthly-grid td { padding:1.5px 2px; border:0.75px solid #c8b890; line-height:1.3; white-space:nowrap; text-align:center; vertical-align:middle; }',
+        '.monthly-grid thead tr:first-child th { background:#e8c547; font-size:9px; white-space:normal; line-height:1.45; padding:3px 3px; }',
+        '.monthly-grid thead tr:nth-child(2) th { background:#f2e6b8; font-size:6.5px; line-height:1.5; padding:2px 2px; }',
         '.monthly-grid td.datecol { white-space:nowrap; font-weight:700; text-align:center; }',
         '.monthly-grid tbody tr:nth-child(even) td { background:transparent; }',
         '.monthly-grid tbody tr.wknd td { background:#eee6cf; }',
