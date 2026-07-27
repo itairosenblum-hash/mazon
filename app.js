@@ -2035,46 +2035,87 @@ function renderReports() {
   sel.innerHTML = '<option value="">כל התחנות</option>' +
     stations.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
 
-  // Custom date range toggle
-  const periodSel = document.getElementById('reportPeriod');
-  const customRange = document.getElementById('reportCustomRange');
-  if (periodSel) {
-    periodSel.onchange = () => {
-      if (customRange) customRange.style.display = periodSel.value === 'custom' ? 'flex' : 'none';
-    };
-  }
+  const now = new Date();
+  const curYear = now.getFullYear();
 
-  // Set default dates
+  // Populate year dropdowns (current year back 4 years)
+  let yearOpts = '';
+  for (let y = curYear; y >= curYear - 4; y--) yearOpts += '<option value="' + y + '">' + y + '</option>';
+  const qYearEl = document.getElementById('reportQuarterYear');
+  const yearEl  = document.getElementById('reportYear');
+  if (qYearEl) qYearEl.innerHTML = yearOpts;
+  if (yearEl)  yearEl.innerHTML  = yearOpts;
+
+  // Sensible defaults: current month / current quarter
+  const monthEl = document.getElementById('reportMonth');
+  if (monthEl && !monthEl.value) monthEl.value = curYear + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  const qEl = document.getElementById('reportQuarter');
+  if (qEl) qEl.value = String(Math.floor(now.getMonth() / 3));
+
+  // Period selector → show only the matching picker
+  const periodSel = document.getElementById('reportPeriod');
+  const pickers = {
+    month:   document.getElementById('reportMonthPicker'),
+    quarter: document.getElementById('reportQuarterPicker'),
+    year:    document.getElementById('reportYearPicker'),
+    custom:  document.getElementById('reportCustomRange'),
+  };
+  function togglePickers() {
+    const v = periodSel ? periodSel.value : 'month';
+    Object.keys(pickers).forEach(function(k) {
+      if (pickers[k]) pickers[k].style.display = (k === v) ? 'flex' : 'none';
+    });
+  }
+  if (periodSel) { periodSel.onchange = togglePickers; togglePickers(); }
+
+  // Custom range default dates (last 30 days)
   const today = new Date();
   const fromDate = new Date(today); fromDate.setDate(today.getDate() - 30);
   const fromEl = document.getElementById('reportFrom');
   const toEl = document.getElementById('reportTo');
-  if (fromEl) fromEl.value = toLocalDateStr(fromDate);
-  if (toEl) toEl.value = toLocalDateStr(today);
+  if (fromEl && !fromEl.value) fromEl.value = toLocalDateStr(fromDate);
+  if (toEl && !toEl.value) toEl.value = toLocalDateStr(today);
 }
 
 function getReportDateRange() {
   const period = document.getElementById('reportPeriod')?.value || 'month';
-  const today = new Date();
-  today.setHours(23,59,59,999);
-  let from = new Date();
-  from.setHours(0,0,0,0);
+  const now = new Date();
+  const todayEnd = new Date(now); todayEnd.setHours(23,59,59,999);
+  let from = new Date(); from.setHours(0,0,0,0);
+  let to = todayEnd;
 
   if (period === 'today') {
-    // from = today
+    // from = today start, to = today end
   } else if (period === 'week') {
     from.setDate(from.getDate() - 7);
   } else if (period === 'month') {
-    from.setDate(from.getDate() - 30);
+    // חודש קלנדרי ספציפי לפי הבורר (ברירת מחדל: החודש הנוכחי)
+    const mv = document.getElementById('reportMonth')?.value; // "YYYY-MM"
+    let y = now.getFullYear(), m = now.getMonth();
+    if (mv && /^\d{4}-\d{2}$/.test(mv)) { const p = mv.split('-'); y = +p[0]; m = +p[1] - 1; }
+    from = new Date(y, m, 1); from.setHours(0,0,0,0);
+    to   = new Date(y, m + 1, 0); to.setHours(23,59,59,999);
   } else if (period === 'quarter') {
-    from.setDate(from.getDate() - 90);
+    // רבעון קלנדרי ספציפי לפי הבורר
+    const q = parseInt(document.getElementById('reportQuarter')?.value, 10) || 0;
+    const y = parseInt(document.getElementById('reportQuarterYear')?.value, 10) || now.getFullYear();
+    from = new Date(y, q * 3, 1); from.setHours(0,0,0,0);
+    to   = new Date(y, q * 3 + 3, 0); to.setHours(23,59,59,999);
+  } else if (period === 'year') {
+    // שנה קלנדרית ספציפית לפי הבורר
+    const y = parseInt(document.getElementById('reportYear')?.value, 10) || now.getFullYear();
+    from = new Date(y, 0, 1); from.setHours(0,0,0,0);
+    to   = new Date(y, 11, 31); to.setHours(23,59,59,999);
   } else if (period === 'custom') {
     const f = document.getElementById('reportFrom')?.value;
     const t = document.getElementById('reportTo')?.value;
-    if (f) from = new Date(f);
-    if (t) { today.setTime(new Date(t).getTime()); today.setHours(23,59,59,999); }
+    if (f) { from = new Date(f); from.setHours(0,0,0,0); }
+    if (t) { to = new Date(t); to.setHours(23,59,59,999); }
   }
-  return { from, to: today };
+
+  // לעולם לא לחרוג מהיום — מונע הזרקת רשומות וירטואליות לתאריכים עתידיים
+  if (to > todayEnd) to = todayEnd;
+  return { from, to };
 }
 
 function generatePDF() {
