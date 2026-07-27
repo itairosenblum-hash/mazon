@@ -411,13 +411,40 @@
           <select id="reportPeriod" class="period-select">
             <option value="today">היום</option>
             <option value="week">שבוע אחרון</option>
-            <option value="month" selected>חודש אחרון</option>
-            <option value="quarter">רבעון אחרון</option>
+            <option value="month" selected>חודש</option>
+            <option value="quarter">רבעון</option>
+            <option value="year">שנה</option>
             <option value="custom">טווח מותאם</option>
           </select>
         </div>
 
-        <div id="reportCustomRange" style="display:none;gap:12px;display:none">
+        <div id="reportMonthPicker" class="form-group" style="display:none">
+          <label>בחר חודש</label>
+          <input type="month" id="reportMonth" class="period-select" />
+        </div>
+
+        <div id="reportQuarterPicker" style="display:none;gap:12px">
+          <div class="form-group">
+            <label>רבעון</label>
+            <select id="reportQuarter" class="period-select">
+              <option value="0">רבעון 1 · ינו–מרץ</option>
+              <option value="1">רבעון 2 · אפר–יוני</option>
+              <option value="2">רבעון 3 · יולי–ספט</option>
+              <option value="3">רבעון 4 · אוק–דצמ</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>שנה</label>
+            <select id="reportQuarterYear" class="period-select"></select>
+          </div>
+        </div>
+
+        <div id="reportYearPicker" class="form-group" style="display:none">
+          <label>בחר שנה</label>
+          <select id="reportYear" class="period-select"></select>
+        </div>
+
+        <div id="reportCustomRange" style="display:none;gap:12px">
           <div class="form-group">
             <label>מתאריך</label>
             <input type="date" id="reportFrom" class="period-select" />
@@ -549,7 +576,7 @@ function togglePasswordVisibility() {
 }
 </script>
 <script async src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" onload="window.dispatchEvent(new Event('chartjs-ready'))"></script>
-<script defer src="app.js?v=20260726a"></script>
+<script defer src="app.js?v=20260727a"></script>
 
 </body>
 </html>
