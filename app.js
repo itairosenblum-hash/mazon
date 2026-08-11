@@ -2388,8 +2388,6 @@ function generatePDF() {
         + '<td style="font-weight:800;color:' + grandC + '">' + grandGap + '</td></tr></tfoot>'
         + '</table>';
 
-      body += '<div class="legend-note">* לצד תאריך = יום חול שבו לא כל התחנות דיווחו בפועל (דיווח חלקי) — הנתונים באותה שורה עשויים שלא לשקף את התמונה המלאה. (בימי שישי/שבת/ערב חג/חג הנתונים מושלמים אוטומטית ל-100% ואינם מסומנים).</div>';
-
       body += '<div class="sign-area"><div class="sign-note">'
         + 'חתימת נציג היחידה על טופס הדיווח בגין הכמויות החודשיות המדווחות הינה <u>מחייבת</u> ובגדר <u>אישור להתחשבנות</u> ותשלום לספק. נא בדוק היטב את אמיתות הנתונים טרם החתימה.'
         + '</div>'
@@ -2447,7 +2445,6 @@ function generatePDF() {
         '.monthly-grid tbody tr.nodata td { background:#f7f7f7; color:#aaa; }',
         '.monthly-grid tfoot tr.totals td { background:#e8c547; font-weight:800; border-top:1.5px solid #1a1510; }',
         '.partial-star { color:#c00; font-weight:900; }',
-        '.legend-note { font-size:0.72rem; color:#555; margin-top:6px; }',
         // משפט האישור + ריבוע החתימה — קומפקטי, ולא נחתך בין עמודים
         '.sign-area { page-break-inside:avoid; }',
         '.sign-note { margin-top:10px; font-size:9.5px; line-height:1.5; text-align:justify; color:#1a1510; }',
