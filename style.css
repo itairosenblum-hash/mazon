@@ -333,9 +333,16 @@ body::before {
   z-index: 300;
   flex-direction: row;
   align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.bottom-nav::-webkit-scrollbar { display: none; }
 .bottom-nav-item {
-  flex: 1;
+  flex: 1 0 66px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -346,10 +353,12 @@ body::before {
   font-size: 0.6rem;
   font-family: 'Heebo', sans-serif;
   transition: color 0.15s;
-  padding: 4px 0;
+  padding: 4px 8px;
   border: none;
   background: none;
   cursor: pointer;
+  white-space: nowrap;
+  scroll-snap-align: start;
 }
 .bottom-nav-item .bn-icon { font-size: 1.3rem; line-height: 1; }
 .bottom-nav-item.active { color: var(--accent); }
@@ -1127,12 +1136,6 @@ tr:hover td { background: var(--bg3); }
 }
 .station-checkbox:hover { border-color: var(--accent); }
 .station-checkbox input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; }
-
-/* Mobile admin nav items */
-@media (max-width: 768px) {
-  .admin-nav-item { display: none; }
-  [data-admin-only] .admin-nav-item { display: flex; }
-}
 
 /* ══ STATIONS TOTAL BANNER ══ */
 .stations-total-banner {

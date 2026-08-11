@@ -19,7 +19,7 @@
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="style.css?v=20260727a" />
+  <link rel="stylesheet" href="style.css?v=20260811b" />
 
   <!-- PWA -->
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
@@ -151,9 +151,12 @@
     <button class="bottom-nav-item active" data-page="dashboard"><span class="bn-icon">⬛</span>Dashboard</button>
     <button class="bottom-nav-item" data-page="entry"><span class="bn-icon">✏️</span>נוכחות</button>
     <button class="bottom-nav-item" data-page="history"><span class="bn-icon">📋</span>היסטוריה</button>
-    <button class="bottom-nav-item admin-nav-item" data-page="users"><span class="bn-icon">👥</span>משתמשים</button>
-    <button class="bottom-nav-item admin-nav-item" data-page="reports"><span class="bn-icon">📄</span>דוחות</button>
-    <button class="bottom-nav-item admin-nav-item" data-page="messages"><span class="bn-icon">💬</span>הודעות</button>
+    <button class="bottom-nav-item" data-page="stations" data-admin-only><span class="bn-icon">🏪</span>תחנות</button>
+    <button class="bottom-nav-item" data-page="reports" data-admin-only><span class="bn-icon">📄</span>דוחות</button>
+    <button class="bottom-nav-item" data-page="missing" data-admin-only><span class="bn-icon">⚠️</span>חסרים</button>
+    <button class="bottom-nav-item" data-page="users" data-admin-only><span class="bn-icon">👥</span>משתמשים</button>
+    <button class="bottom-nav-item" data-page="messages" data-admin-only><span class="bn-icon">💬</span>הודעות</button>
+    <button class="bottom-nav-item" data-page="settings" data-admin-only><span class="bn-icon">⚙️</span>הגדרות</button>
     <button class="bottom-nav-item" onclick="logout()"><span class="bn-icon">🚪</span>יציאה</button>
   </nav>
   <button class="btn-logout-mobile" id="logoutBtnMobile" style="display:none">יציאה</button>
@@ -544,7 +547,7 @@ function togglePasswordVisibility() {
 }
 </script>
 <script async src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" onload="window.dispatchEvent(new Event('chartjs-ready'))"></script>
-<script defer src="app.js?v=20260811a"></script>
+<script defer src="app.js?v=20260811b"></script>
 
 </body>
 </html>
