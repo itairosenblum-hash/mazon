@@ -2337,6 +2337,9 @@ function generatePDF() {
         const reportedIds = new Set(de.map(function(e){ return e.stationId; }));
         const dayStations = stations.filter(function(s){ return reportedIds.has(s.id); });
         const hasData = dayStations.length > 0;
+        // דיווח חלקי: יש דיווח אמיתי (לא וירטואלי, כלומר לא הושלם אוטומטית עבור סופ"ש/חג) אבל לא מכל התחנות
+        const realReportedIds = new Set(de.filter(function(e){ return !e.virtual; }).map(function(e){ return e.stationId; }));
+        const isPartial = realReportedIds.size > 0 && realReportedIds.size < stations.length;
 
         let dayGap = 0;
         const cells = gRoles.map(function(role) {
@@ -2364,7 +2367,8 @@ function generatePDF() {
         }
 
         const cls = isSpecialDay(ds) ? ' class="wknd"' : (hasData ? '' : ' class="nodata"');
-        return '<tr' + cls + '><td class="datecol">' + dmy + '</td><td>' + dow + '</td>' + cells + totCell + '</tr>';
+        const dateCell = dmy + (isPartial ? ' <span class="partial-star" title="לא כל התחנות דיווחו ביום זה">*</span>' : '');
+        return '<tr' + cls + '><td class="datecol">' + dateCell + '</td><td>' + dow + '</td>' + cells + totCell + '</tr>';
       }).join('');
 
       const headTop  = gRoles.map(function(r){ return '<th colspan="3">' + escapeHtml(r) + '</th>'; }).join('');
@@ -2383,6 +2387,8 @@ function generatePDF() {
         + '<tfoot><tr class="totals"><td colspan="2">סה"כ פערים</td>' + footCells
         + '<td style="font-weight:800;color:' + grandC + '">' + grandGap + '</td></tr></tfoot>'
         + '</table>';
+
+      body += '<div class="legend-note">* לצד תאריך = לא כל התחנות דיווחו ביום זה (דיווח חלקי) — הנתונים באותה שורה עשויים שלא לשקף את התמונה המלאה.</div>';
 
       body += '<div class="sign-area"><div class="sign-note">'
         + 'חתימת נציג היחידה על טופס הדיווח בגין הכמויות החודשיות המדווחות הינה <u>מחייבת</u> ובגדר <u>אישור להתחשבנות</u> ותשלום לספק. נא בדוק היטב את אמיתות הנתונים טרם החתימה.'
@@ -2440,6 +2446,8 @@ function generatePDF() {
         '.monthly-grid tbody tr.wknd td { background:#eee6cf; }',
         '.monthly-grid tbody tr.nodata td { background:#f7f7f7; color:#aaa; }',
         '.monthly-grid tfoot tr.totals td { background:#e8c547; font-weight:800; border-top:1.5px solid #1a1510; }',
+        '.partial-star { color:#c00; font-weight:900; }',
+        '.legend-note { font-size:0.72rem; color:#555; margin-top:6px; }',
         // משפט האישור + ריבוע החתימה — קומפקטי, ולא נחתך בין עמודים
         '.sign-area { page-break-inside:avoid; }',
         '.sign-note { margin-top:10px; font-size:9.5px; line-height:1.5; text-align:justify; color:#1a1510; }',
