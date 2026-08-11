@@ -2337,9 +2337,9 @@ function generatePDF() {
         const reportedIds = new Set(de.map(function(e){ return e.stationId; }));
         const dayStations = stations.filter(function(s){ return reportedIds.has(s.id); });
         const hasData = dayStations.length > 0;
-        // דיווח חלקי: יש דיווח אמיתי (לא וירטואלי, כלומר לא הושלם אוטומטית עבור סופ"ש/חג) אבל לא מכל התחנות
+        // דיווח חלקי: רק בימי חול (בשישי/שבת/ערב חג/חג הנתונים מושלמים אוטומטית ל-100% ע"י רשומה וירטואלית, אז אין צורך לסמן)
         const realReportedIds = new Set(de.filter(function(e){ return !e.virtual; }).map(function(e){ return e.stationId; }));
-        const isPartial = realReportedIds.size > 0 && realReportedIds.size < stations.length;
+        const isPartial = !isSpecialDay(ds) && realReportedIds.size > 0 && realReportedIds.size < stations.length;
 
         let dayGap = 0;
         const cells = gRoles.map(function(role) {
@@ -2388,7 +2388,7 @@ function generatePDF() {
         + '<td style="font-weight:800;color:' + grandC + '">' + grandGap + '</td></tr></tfoot>'
         + '</table>';
 
-      body += '<div class="legend-note">* לצד תאריך = לא כל התחנות דיווחו ביום זה (דיווח חלקי) — הנתונים באותה שורה עשויים שלא לשקף את התמונה המלאה.</div>';
+      body += '<div class="legend-note">* לצד תאריך = יום חול שבו לא כל התחנות דיווחו בפועל (דיווח חלקי) — הנתונים באותה שורה עשויים שלא לשקף את התמונה המלאה. (בימי שישי/שבת/ערב חג/חג הנתונים מושלמים אוטומטית ל-100% ואינם מסומנים).</div>';
 
       body += '<div class="sign-area"><div class="sign-note">'
         + 'חתימת נציג היחידה על טופס הדיווח בגין הכמויות החודשיות המדווחות הינה <u>מחייבת</u> ובגדר <u>אישור להתחשבנות</u> ותשלום לספק. נא בדוק היטב את אמיתות הנתונים טרם החתימה.'
