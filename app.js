@@ -2218,9 +2218,12 @@ function getReportDateRange() {
   return { from, to };
 }
 
-function generatePDF() {
+function generatePDF(opts) {
   try {
     if (!state || !state.stations) { alert('אין נתונים להפקת דוח.'); return; }
+    // perStation: דוח אחד שבו כל תחנה מופיעה בעמוד נפרד
+    const perStation = !!(opts && opts.perStation);
+    let pages = null; // [{ station, body }]
 
     const reportType    = 'monthly';
     const stationFilter = document.getElementById('reportStation')?.value || '';
@@ -2317,6 +2320,8 @@ function generatePDF() {
         + '<tbody>' + rRows + '</tbody></table>';
 
     } else if (reportType === 'monthly') {
+     const buildMonthly = function(entries, stations) {
+      let body = '';
       // טבלת מעקב חודשית: שורה לכל יום, ולכל תפקיד תקן/בפועל/פער, ובסוף סה"כ פערים
       const gridDates = periodDateStrings(from, to);
       const HE_DOW = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
@@ -2397,7 +2402,18 @@ function generatePDF() {
         + '<div class="sign-box-name">רנ"ג אילן אסולין ק/5267499</div>'
         + '<div class="sign-box-name">רמ"ד מזון זרוע הים</div>'
         + '</div></div></div>';
+      return body;
+     };
+
+      if (perStation) {
+        pages = stations.map(function(st) {
+          return { station: st, body: buildMonthly(entries.filter(function(e){ return e.stationId === st.id; }), [st]) };
+        });
+      } else {
+        pages = [{ station: null, body: buildMonthly(entries, stations) }];
+      }
     }
+    if (!pages) pages = [{ station: null, body: body }];
 
     var style = [
       '* { box-sizing:border-box; margin:0; padding:0; }',
@@ -2454,7 +2470,12 @@ function generatePDF() {
         '.sign-box-label { font-size:9.5px; font-weight:700; margin-bottom:2px; }',
         '.sign-box-space { height:28px; }',
         '.sign-box-name { font-size:9.5px; font-weight:700; line-height:1.45; }',
-        '.footer { margin-top:6px; font-size:7px; padding-top:3px; }'
+        '.footer { margin-top:6px; font-size:7px; padding-top:3px; }',
+        '.st-name { font-size:14px; font-weight:900; color:#1a1510; margin:2px 0 1px; }',
+        // עמוד לכל תחנה
+        '.rpt-page { break-after:page; page-break-after:always; }',
+        '.rpt-page:last-child { break-after:auto; page-break-after:auto; }',
+        '@media screen { .rpt-page + .rpt-page { margin-top:22px; border-top:3px dashed #c8b890; } }'
       ].join('\n');
     }
 
@@ -2470,18 +2491,23 @@ function generatePDF() {
       + '<span class="tb-hint">"הדפס" פותח חלון הדפסה · "שמור כ-PDF" מוריד את הקובץ ישירות למחשב.</span>'
       + '</div>\n'
       + '<div id="printRoot">\n'
-      + '<div class="header">'
-      + '<div class="org">מערכת ניהול קבלן — זרוע הים</div>'
-      + '<div class="title">דוח נוכחות עובדים</div>'
-      + '<div class="subtitle">' + typeLabel + '</div>'
-      + '<div class="dates">' + fromStr + ' — ' + toStr + '</div>'
-      + '</div>\n'
-      + body
-      + '\n<div class="footer">הופק ממערכת ניהול קבלן ים &nbsp;|&nbsp; '
-      + new Date().toLocaleString('he-IL') + ' &nbsp;|&nbsp; כל הזכויות שמורות</div>'
+      + pages.map(function(pg) {
+          return '<div class="rpt-page">'
+            + '<div class="header">'
+            + '<div class="org">מערכת ניהול קבלן — זרוע הים</div>'
+            + '<div class="title">דוח נוכחות עובדים</div>'
+            + (pg.station ? '<div class="st-name">תחנה: ' + escapeHtml(pg.station.name) + '</div>' : '')
+            + '<div class="subtitle">' + typeLabel + '</div>'
+            + '<div class="dates">' + fromStr + ' — ' + toStr + '</div>'
+            + '</div>\n'
+            + pg.body
+            + '\n<div class="footer">הופק ממערכת ניהול קבלן ים &nbsp;|&nbsp; '
+            + new Date().toLocaleString('he-IL') + ' &nbsp;|&nbsp; כל הזכויות שמורות</div>'
+            + '</div>';
+        }).join('\n')
       + '\n</div>\n</body>\n</html>';
 
-    var fileName = 'דוח נוכחות עובדים ' + HE_MONTHS[from.getMonth()] + ' ' + from.getFullYear() + '.pdf';
+    var fileName = (perStation ? 'דוח נוכחות לפי תחנות ' : 'דוח נוכחות עובדים ') + HE_MONTHS[from.getMonth()] + ' ' + from.getFullYear() + '.pdf';
 
     var win = window.open('', '_blank');
     win.document.write(html);
@@ -2496,15 +2522,23 @@ function generatePDF() {
             var pageW = (297 - 12) / 25.4 * 96;   // רוחב הדפסה נטו (landscape, שוליים 6 מ"מ)
             var pageH = (210 - 12) / 25.4 * 96;    // גובה הדפסה נטו
             root.style.width = pageW + 'px';        // מדידה ברוחב ההדפסה
-            var scaleW = root.scrollWidth  > pageW ? pageW / root.scrollWidth  : 1;
-            var scaleH = root.scrollHeight > pageH ? pageH / root.scrollHeight : 1;
-            var sc = Math.min(scaleW, scaleH);
+            // כל עמוד (תחנה) מותאם בנפרד לעמוד הדפסה אחד
+            var pgEls = root.querySelectorAll('.rpt-page');
+            var zooms = [];
+            for (var i = 0; i < pgEls.length; i++) {
+              var el = pgEls[i];
+              var scaleW = el.scrollWidth  > pageW ? pageW / el.scrollWidth  : 1;
+              var scaleH = el.scrollHeight > pageH ? pageH / el.scrollHeight : 1;
+              zooms.push(Math.min(scaleW, scaleH));
+            }
             // תצוגה רספונסיבית: לא לחרוג מרוחב החלון (מונע חיתוך בתצוגה); בהדפסה @page קובע את הרוחב
             root.style.width = '100%';
             root.style.maxWidth = pageW + 'px';
             root.style.marginLeft = 'auto';
             root.style.marginRight = 'auto';
-            if (sc < 1) { root.style.zoom = sc * 0.98; }
+            for (var j = 0; j < pgEls.length; j++) {
+              if (zooms[j] < 1) pgEls[j].style.zoom = zooms[j] * 0.98;
+            }
           }
         }
       } catch (e) {}
@@ -2524,26 +2558,43 @@ function generatePDF() {
             return;
           }
           if (bs) { bs.disabled = true; bs.textContent = '⏳ מכין קובץ...'; }
-          var prevZoom = r.style.zoom, prevW = r.style.width, prevMaxW = r.style.maxWidth;
+          var pgEls = Array.prototype.slice.call(r.querySelectorAll('.rpt-page'));
+          var prevZooms = pgEls.map(function(el){ return el.style.zoom; });
+          var prevW = r.style.width, prevMaxW = r.style.maxWidth;
+          var restore = function() {
+            pgEls.forEach(function(el, k){ el.style.zoom = prevZooms[k]; });
+            r.style.width = prevW; r.style.maxWidth = prevMaxW;
+          };
           var capW = (297 - 12) / 25.4 * 96;
-          r.style.zoom = '';                 // לוכדים בגודל מלא
+          pgEls.forEach(function(el){ el.style.zoom = ''; });  // לוכדים בגודל מלא
           r.style.maxWidth = 'none';
           r.style.width = capW + 'px';        // רוחב הדפסה קבוע — לכידה עקבית
-          h2c(r, { scale: 3, backgroundColor: '#ffffff', useCORS: true }).then(function(canvas) {
-            r.style.zoom = prevZoom; r.style.width = prevW; r.style.maxWidth = prevMaxW;
-            var JsPDF = jspdfNS.jsPDF;
-            var pdf = new JsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-            var pw = pdf.internal.pageSize.getWidth();
-            var ph = pdf.internal.pageSize.getHeight();
-            var margin = 6, availW = pw - 2*margin, availH = ph - 2*margin;
-            var ratio = Math.min(availW / canvas.width, availH / canvas.height); // התאמה לעמוד אחד
-            var w = canvas.width * ratio, h = canvas.height * ratio;
-            var x = margin + (availW - w) / 2, y = margin;
-            pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', x, y, w, h);
+          var JsPDF = jspdfNS.jsPDF;
+          var pdf = new JsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+          var pw = pdf.internal.pageSize.getWidth();
+          var ph = pdf.internal.pageSize.getHeight();
+          var margin = 6, availW = pw - 2*margin, availH = ph - 2*margin;
+          var capScale = pgEls.length > 1 ? 2.5 : 3;  // מעט פחות זיכרון כשיש הרבה עמודים
+          var chain = Promise.resolve();
+          pgEls.forEach(function(el, idx) {
+            chain = chain.then(function() {
+              if (bs && pgEls.length > 1) bs.textContent = '⏳ עמוד ' + (idx + 1) + '/' + pgEls.length + '...';
+              return h2c(el, { scale: capScale, backgroundColor: '#ffffff', useCORS: true });
+            }).then(function(canvas) {
+              if (idx > 0) pdf.addPage('a4', 'landscape');
+              var ratio = Math.min(availW / canvas.width, availH / canvas.height); // התאמה לעמוד אחד
+              var w = canvas.width * ratio, h = canvas.height * ratio;
+              var x = margin + (availW - w) / 2, y = margin;
+              pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', x, y, w, h);
+              canvas.width = canvas.height = 0; // שחרור זיכרון
+            });
+          });
+          chain.then(function() {
+            restore();
             pdf.save(fileName);
             if (bs) { bs.disabled = false; bs.textContent = '💾 שמור כ-PDF'; }
           }).catch(function(err) {
-            r.style.zoom = prevZoom; r.style.width = prevW; r.style.maxWidth = prevMaxW;
+            restore();
             if (bs) { bs.disabled = false; bs.textContent = '💾 שמור כ-PDF'; }
             console.error('PDF download error:', err);
             alert('אירעה תקלה בהורדה — נפתח חלון הדפסה כגיבוי.');
