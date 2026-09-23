@@ -425,6 +425,9 @@
         <button class="btn-save" id="generateReportBtn" onclick="generatePDF()" style="width:100%;margin-top:1rem">
           📥 הפק דוח PDF
         </button>
+        <button class="btn-save" id="generateStationsReportBtn" onclick="generatePDF({perStation:true})" style="width:100%;margin-top:.6rem">
+          📑 הפק דוח לפי תחנות — עמוד לכל תחנה
+        </button>
       </div>
 
       <div class="reports-card" id="reportPreview" style="display:none">
@@ -547,7 +550,7 @@ function togglePasswordVisibility() {
 }
 </script>
 <script async src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" onload="window.dispatchEvent(new Event('chartjs-ready'))"></script>
-<script defer src="app.js?v=20260811b"></script>
+<script defer src="app.js?v=20260923a"></script>
 
 </body>
 </html>
