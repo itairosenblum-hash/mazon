@@ -451,6 +451,9 @@
         </div>
 
         <div class="missing-hint">נספרים רק ימי עבודה (א׳–ה׳, ללא שבת/חג) עד היום. סופ״ש וחגים מונחים אוטומטית ואינם נחשבים חסרים.</div>
+
+        <button class="btn-save" onclick="generateMissingReport()" style="width:100%;margin-top:1rem">📄 דוח כולל לתחנות (PDF)</button>
+        <button class="btn-outline" onclick="shareMissingReportText()" style="width:100%;margin-top:.6rem">📋 העתק / שתף דוח כטקסט (וואטסאפ)</button>
       </div>
 
       <div id="missingList"></div>
@@ -550,7 +553,7 @@ function togglePasswordVisibility() {
 }
 </script>
 <script async src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" onload="window.dispatchEvent(new Event('chartjs-ready'))"></script>
-<script defer src="app.js?v=20260923a"></script>
+<script defer src="app.js?v=20261028a"></script>
 
 </body>
 </html>

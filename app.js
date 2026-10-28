@@ -2177,6 +2177,223 @@ function sendMissingDaysReminder(userId, stationId) {
   window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
 }
 
+// ── דוח ימים חסרים כולל — לשליחה לתחנות ──
+function getMissingReportData() {
+  const now = new Date();
+  const monthEl = document.getElementById('missingMonth');
+  const monthStr = monthEl && monthEl.value ? monthEl.value : (now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0'));
+  const mp = monthStr.split('-');
+  const monthLabel = HE_MONTHS[(+mp[1]) - 1] + ' ' + mp[0];
+  const workDays = workingDaysInMonth(monthStr);
+  const stations = (state && state.stations) ? state.stations : [];
+  const rows = stations.map(function(st) {
+    const missing = missingDaysForStation(st.id, workDays);
+    const managers = (state.users || []).filter(function(u){
+      return u.role !== 'admin' && (u.stationIds || []).includes(st.id);
+    }).map(function(u){ return u.name; });
+    return { station: st, missing: missing, managers: managers };
+  });
+  // תחנות עם הכי הרבה חסרים קודם; תחנות תקינות בסוף
+  rows.sort(function(a, b){ return b.missing.length - a.missing.length; });
+  const totalMissing = rows.reduce(function(s, r){ return s + r.missing.length; }, 0);
+  const stationsWithMissing = rows.filter(function(r){ return r.missing.length; }).length;
+  return { monthStr: monthStr, monthLabel: monthLabel, workDays: workDays, rows: rows,
+           totalMissing: totalMissing, stationsWithMissing: stationsWithMissing };
+}
+
+function shortHeDate(ds) {
+  const p = ds.split('-');
+  const d = new Date(+p[0], +p[1] - 1, +p[2]);
+  return HE_DOW_FULL[d.getDay()].charAt(0) + '׳ ' + p[2] + '/' + p[1];
+}
+
+function buildMissingReportText(data) {
+  const lines = [];
+  lines.push('📋 *דוח ימי דיווח חסרים — ' + data.monthLabel + '*');
+  lines.push('מערכת ניהול קבלן — זרוע הים');
+  lines.push('נכון ל-' + formatHeDate(toLocalDateStr(new Date())));
+  lines.push('');
+  if (!data.totalMissing) {
+    lines.push('🎉 כל התחנות השלימו את כל הדיווחים (' + data.workDays.length + ' ימי עבודה).');
+  } else {
+    lines.push('סה״כ *' + data.totalMissing + '* ימים חסרים ב-*' + data.stationsWithMissing + '* תחנות (מתוך ' + data.workDays.length + ' ימי עבודה).');
+    lines.push('');
+    data.rows.filter(function(r){ return r.missing.length; }).forEach(function(r) {
+      lines.push('🔸 *' + r.station.name + '* — ' + r.missing.length + ' ימים');
+      lines.push('   ' + r.missing.map(shortHeDate).join(', '));
+    });
+    const ok = data.rows.filter(function(r){ return !r.missing.length; });
+    if (ok.length) {
+      lines.push('');
+      lines.push('✅ הושלם: ' + ok.map(function(r){ return r.station.name; }).join(', '));
+    }
+    lines.push('');
+    lines.push('נא להשלים את הדיווחים החסרים בהקדם 🙏');
+  }
+  lines.push('https://itairosenblum-hash.github.io/mazon/');
+  return lines.join('\n');
+}
+
+function shareMissingReportText() {
+  const data = getMissingReportData();
+  if (!data.rows.length) { alert('אין תחנות במערכת.'); return; }
+  if (!data.workDays.length) { alert('אין ימי עבודה שחלפו בחודש זה.'); return; }
+  const text = buildMissingReportText(data);
+  if (navigator.share) {
+    navigator.share({ title: 'דוח ימים חסרים — ' + data.monthLabel, text: text }).catch(function(){});
+    return;
+  }
+  const done = function(){ alert('הדוח הועתק ✓ — הדבק בקבוצת הוואטסאפ של התחנות.'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(function(){
+      window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    });
+  } else {
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  }
+}
+
+function generateMissingReport() {
+  const data = getMissingReportData();
+  if (!data.rows.length) { alert('אין תחנות במערכת.'); return; }
+  if (!data.workDays.length) { alert('אין ימי עבודה שחלפו בחודש זה.'); return; }
+
+  const todayLabel = formatHeDate(toLocalDateStr(new Date()));
+  const tableRows = data.rows.map(function(r, i) {
+    const days = r.missing.length
+      ? r.missing.map(function(ds){ return '<span class="chip">' + shortHeDate(ds) + '</span>'; }).join('')
+      : '<span class="okmark">✓ הושלם</span>';
+    const mgr = r.managers.length ? r.managers.map(escapeHtml).join(', ') : '<span class="muted">—</span>';
+    return '<tr class="' + (r.missing.length ? 'miss' : 'ok') + '">'
+      + '<td class="num">' + (i + 1) + '</td>'
+      + '<td class="stn">' + escapeHtml(r.station.name) + '</td>'
+      + '<td class="mgr">' + mgr + '</td>'
+      + '<td class="cnt">' + (r.missing.length || '0') + '</td>'
+      + '<td class="days">' + days + '</td>'
+      + '<td class="sig"></td>'
+      + '</tr>';
+  }).join('');
+
+  const style = [
+    '* { box-sizing:border-box; margin:0; padding:0; }',
+    "body { font-family:'Heebo',Arial,sans-serif; direction:rtl; background:#fff; color:#1a1510; font-size:12px; }",
+    '#printRoot { padding:18px; max-width:794px; margin:0 auto; }',
+    '.header { text-align:center; border-bottom:3px solid #e8c547; padding-bottom:10px; margin-bottom:12px; }',
+    '.org { font-size:10.5px; color:#888; }',
+    '.title { font-size:21px; font-weight:900; margin:3px 0; }',
+    '.subtitle { font-size:13px; color:#6b5f4e; font-weight:700; }',
+    '.dates { font-size:10px; color:#999; margin-top:3px; }',
+    '.summary { display:flex; gap:8px; margin-bottom:12px; }',
+    '.kpi { flex:1; border:1px solid #e8e0d0; border-radius:6px; padding:7px; text-align:center; background:#faf7f0; }',
+    '.kpi b { display:block; font-size:19px; font-weight:900; }',
+    '.kpi span { font-size:10px; color:#6b5f4e; }',
+    '.kpi.bad b { color:#c2410c; } .kpi.good b { color:#15803d; }',
+    '.instr { font-size:11px; background:#fff7e0; border:1px solid #e8c547; border-radius:6px; padding:7px 10px; margin-bottom:12px; line-height:1.6; }',
+    'table { width:100%; border-collapse:collapse; font-size:11px; }',
+    'thead th { background:#e8c547; padding:6px 5px; border:1px solid #c8a830; font-weight:700; }',
+    'tbody td { padding:5px; border:1px solid #e0d6c0; vertical-align:middle; text-align:center; }',
+    'tbody tr { page-break-inside:avoid; }',
+    'tr.ok td { background:#f3faf4; color:#555; }',
+    'td.stn { text-align:right; font-weight:700; white-space:nowrap; }',
+    'td.mgr { text-align:right; font-size:10px; }',
+    'td.cnt { font-weight:900; font-size:13px; } tr.miss td.cnt { color:#c2410c; }',
+    'td.days { text-align:right; line-height:1.9; }',
+    'td.sig { width:70px; }',
+    '.chip { display:inline-block; background:#fdebd9; color:#9a3412; border:1px solid #f5c49b; border-radius:4px; padding:0 5px; margin:1px 2px; font-size:10px; white-space:nowrap; }',
+    '.okmark { color:#15803d; font-weight:700; }',
+    '.muted { color:#bbb; }',
+    '.notes { margin-top:12px; font-size:10px; color:#6b5f4e; line-height:1.6; }',
+    '.footer { margin-top:14px; text-align:center; font-size:8.5px; color:#b0a590; border-top:1px solid #e8e0d0; padding-top:6px; }',
+    '.toolbar { position:sticky; top:0; z-index:10; background:#1a1510; padding:10px 14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }',
+    '.tb-btn { background:#e8c547; color:#1a1510; border:none; border-radius:6px; padding:9px 18px; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }',
+    '.tb-hint { color:#d8cba8; font-size:11px; }',
+    '@page { size:A4 portrait; margin:10mm; }',
+    '@media print { .screen-only { display:none !important; } #printRoot { padding:0; max-width:none; } thead { display:table-header-group; } }'
+  ].join('\n');
+
+  const html = '<!DOCTYPE html>\n<html lang="he" dir="rtl">\n<head>\n<meta charset="UTF-8"/>\n'
+    + '<meta name="viewport" content="width=device-width, initial-scale=1"/>\n'
+    + '<title>דוח ימים חסרים — ' + data.monthLabel + '</title>\n'
+    + '<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet"/>\n'
+    + '<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>\n'
+    + '<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>\n'
+    + '<style>' + style + '</style>\n</head>\n<body>\n'
+    + '<div class="toolbar screen-only">'
+    + '<button class="tb-btn" id="btnPrint">🖨️ הדפס</button>'
+    + '<button class="tb-btn" id="btnSave">💾 שמור כ-PDF</button>'
+    + '<span class="tb-hint">שמור את הקובץ ושלח לתחנות לטיפול.</span>'
+    + '</div>\n'
+    + '<div id="printRoot">'
+    + '<div class="header">'
+    + '<div class="org">מערכת ניהול קבלן — זרוע הים</div>'
+    + '<div class="title">דוח ימי דיווח חסרים</div>'
+    + '<div class="subtitle">חודש ' + data.monthLabel + '</div>'
+    + '<div class="dates">נכון ל' + todayLabel + '</div>'
+    + '</div>'
+    + '<div class="summary">'
+    + '<div class="kpi ' + (data.totalMissing ? 'bad' : 'good') + '"><b>' + data.totalMissing + '</b><span>ימי דיווח חסרים</span></div>'
+    + '<div class="kpi ' + (data.stationsWithMissing ? 'bad' : 'good') + '"><b>' + data.stationsWithMissing + ' / ' + data.rows.length + '</b><span>תחנות עם חוסרים</span></div>'
+    + '<div class="kpi"><b>' + data.workDays.length + '</b><span>ימי עבודה שחלפו</span></div>'
+    + '</div>'
+    + (data.totalMissing
+        ? '<div class="instr"><b>לטיפול התחנות:</b> נא להשלים במערכת את דיווחי הנוכחות עבור הימים המסומנים בטבלה בהקדם. דיווח חסר פוגע בדוח החודשי ובהתחשבנות מול הספק.</div>'
+        : '<div class="instr"><b>🎉 כל התחנות השלימו את כל הדיווחים לחודש זה.</b></div>')
+    + '<table><thead><tr><th>#</th><th>תחנה</th><th>מנהל תחנה</th><th>חסרים</th><th>ימים חסרים</th><th>טופל ✓</th></tr></thead>'
+    + '<tbody>' + tableRows + '</tbody></table>'
+    + '<div class="notes">* נספרים ימי עבודה בלבד (א׳–ה׳, ללא שבת, חג וערב חג) עד תאריך הפקת הדוח. סופי שבוע וחגים מונחים אוטומטית לפי התקן.</div>'
+    + '<div class="footer">הופק ממערכת ניהול קבלן ים &nbsp;|&nbsp; ' + new Date().toLocaleString('he-IL') + '</div>'
+    + '</div>\n</body>\n</html>';
+
+  const fileName = 'דוח ימים חסרים ' + data.monthLabel + '.pdf';
+  const win = window.open('', '_blank');
+  if (!win) { alert('הדפדפן חסם את החלון — אפשר חלונות קופצים ונסה שוב.'); return; }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(function() {
+    try {
+      const bp = win.document.getElementById('btnPrint');
+      const bs = win.document.getElementById('btnSave');
+      if (bp) bp.onclick = function() { win.print(); };
+      if (bs) bs.onclick = function() {
+        const r = win.document.getElementById('printRoot');
+        const h2c = win.html2canvas, ns = win.jspdf;
+        if (!r || !h2c || !ns || !ns.jsPDF) {
+          alert('לא ניתן להוריד ישירות כרגע — נפתח חלון הדפסה, בחר שם "שמירה כ-PDF".');
+          win.print(); return;
+        }
+        bs.disabled = true; bs.textContent = '⏳ מכין קובץ...';
+        const prevW = r.style.width, prevMax = r.style.maxWidth;
+        r.style.maxWidth = 'none'; r.style.width = '794px';
+        h2c(r, { scale: 2.5, backgroundColor: '#ffffff', useCORS: true }).then(function(canvas) {
+          r.style.width = prevW; r.style.maxWidth = prevMax;
+          const pdf = new ns.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+          const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
+          const m = 8, aw = pw - 2*m, ah = ph - 2*m;
+          const mmPerPx = aw / canvas.width;
+          const sliceH = Math.floor(ah / mmPerPx);   // גובה פרוסה בפיקסלים לכל עמוד
+          for (let y = 0, pg = 0; y < canvas.height; y += sliceH, pg++) {
+            const h = Math.min(sliceH, canvas.height - y);
+            const c = win.document.createElement('canvas');
+            c.width = canvas.width; c.height = h;
+            c.getContext('2d').drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
+            if (pg > 0) pdf.addPage('a4', 'portrait');
+            pdf.addImage(c.toDataURL('image/jpeg', 0.92), 'JPEG', m, m, aw, h * mmPerPx);
+          }
+          pdf.save(fileName);
+          bs.disabled = false; bs.textContent = '💾 שמור כ-PDF';
+        }).catch(function(err) {
+          r.style.width = prevW; r.style.maxWidth = prevMax;
+          console.error('Missing report PDF error:', err);
+          bs.disabled = false; bs.textContent = '💾 שמור כ-PDF';
+          alert('אירעה תקלה בהורדה — נפתח חלון הדפסה כגיבוי.');
+          win.print();
+        });
+      };
+    } catch (e) {}
+  }, 900);
+}
+
 function getReportDateRange() {
   const period = document.getElementById('reportPeriod')?.value || 'month';
   const now = new Date();
