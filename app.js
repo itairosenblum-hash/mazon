@@ -2204,7 +2204,8 @@ function getMissingReportData() {
 function shortHeDate(ds) {
   const p = ds.split('-');
   const d = new Date(+p[0], +p[1] - 1, +p[2]);
-  return HE_DOW_FULL[d.getDay()].charAt(0) + '׳ ' + p[2] + '/' + p[1];
+  const HE_DOW_LETTER = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
+  return HE_DOW_LETTER[d.getDay()] + ' ' + p[2] + '/' + p[1];
 }
 
 function buildMissingReportText(data) {
