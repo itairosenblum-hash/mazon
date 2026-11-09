@@ -1807,3 +1807,34 @@ tr:hover td { background: var(--bg3); }
 .missing-remind-btn:hover { background: #1eb958; }
 .missing-nophone { margin-top: 0.8rem; font-size: 0.78rem; color: var(--text2); }
 .missing-empty { color: var(--text2); font-size: 0.9rem; text-align: center; padding: 0.5rem; }
+
+/* ── Report status gauges (dashboard) ── */
+.rg-card .chart-title { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.rg-scope { font-weight: 400; color: var(--text2); text-transform: none; letter-spacing: 0; }
+.rg-hint { margin-right: auto; font-size: 0.65rem; color: var(--text3); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.rg-main { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
+.rg-gauge { background: none; border: none; font: inherit; color: var(--text); cursor: pointer; text-align: center; border-radius: 10px; padding: 6px 2px; transition: background .15s; -webkit-tap-highlight-color: transparent; }
+.rg-gauge:hover, .rg-gauge:focus-visible { background: var(--bg3); outline: none; }
+.rg-gauge:active { transform: scale(0.97); }
+.rg-gauge svg { display: block; margin: 0 auto; max-width: 100%; }
+.rg-num { font-family: 'Heebo', sans-serif; font-weight: 800; font-size: 13px; fill: var(--text); }
+.rg-num.big { font-size: 22px; }
+.rg-label { font-size: 0.75rem; font-weight: 700; margin-top: 2px; }
+.rg-sub { font-size: 0.66rem; color: var(--text2); }
+.rg-sub0 { font-size: 0.68rem; color: var(--text2); font-weight: 600; }
+.rg-gap { font-size: 0.64rem; color: var(--red); font-weight: 600; margin-top: 1px; }
+.rg-gap.ok { color: var(--green); }
+.rg-gap.muted { color: var(--text3); font-weight: 400; }
+.rg-legend { display: flex; gap: 12px; justify-content: center; font-size: 0.64rem; color: var(--text2); margin-top: 8px; }
+.rg-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 4px; vertical-align: middle; }
+.rg-empty { font-size: 0.8rem; color: var(--text3); text-align: center; padding: 1rem; }
+.rg-stations { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); column-gap: 18px; }
+.rg-station { border-top: 1px solid var(--bg4); padding: 10px 0 4px; }
+.rg-st-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.rg-st-name { font-size: 0.85rem; font-weight: 700; }
+.rg-st-mgr { font-size: 0.68rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rg-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 4px; }
+.rg-gauge.mini { padding: 3px 0; }
+.rg-mini-label { font-size: 0.6rem; color: var(--text3); }
+.missing-filter { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 0.9rem; margin-bottom: 0.8rem; font-size: 0.85rem; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.missing-filter-clear { margin-right: auto; background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font: inherit; font-size: 0.75rem; color: var(--text2); cursor: pointer; }

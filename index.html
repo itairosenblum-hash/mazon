@@ -19,7 +19,7 @@
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="style.css?v=20260811b" />
+  <link rel="stylesheet" href="style.css?v=20261109a" />
 
   <!-- PWA -->
   <link rel="icon" href="favicon.ico" type="image/x-icon" />
@@ -191,21 +191,14 @@
       </div>
       <div id="weekendAutoNote" style="font-size:0.78rem;color:var(--text3);margin:-4px 0 10px;display:none"></div>
       <div class="summary-grid" id="summaryCards"></div>
-      <div class="chart-card full">
-        <div class="chart-title"><span class="ct-icon">🏪</span> נוכחות לפי תחנה — <span id="chartPeriodLabel">30 ימים</span> <span style="font-size:0.65rem;color:var(--text3);font-weight:400;margin-right:6px">לחץ על עמודה לפירוט</span></div>
-        <div class="chart-wrap" style="height:280px"><canvas id="chartByStation" role="img" aria-label="נוכחות לפי תחנה"></canvas></div>
+      <div class="chart-card full rg-card" id="reportGaugesCard">
+        <div class="chart-title"><span class="ct-icon">⏱</span> סטטוס דיווח <span id="reportGaugesScope" class="rg-scope"></span><span class="rg-hint">לחץ על שעון לפערים</span></div>
+        <div class="rg-main" id="reportGaugesMain"></div>
+        <div class="rg-legend"><span><i style="background:var(--green)"></i>90%+</span><span><i style="background:var(--orange)"></i>70–89%</span><span><i style="background:var(--red)"></i>מתחת ל־70%</span></div>
       </div>
-      <div class="chart-card full">
-        <div class="chart-title"><span class="ct-icon">👨‍🍳</span> חלוקת תפקידים — נוכחים מול תקן</div>
-        <div class="chart-wrap chart-roles-wrap"><canvas id="chartByRole" role="img" aria-label="חלוקת תפקידים"></canvas></div>
-      </div>
-      <div class="chart-card full">
-        <div class="chart-title"><span class="ct-icon">📈</span> מגמת נוכחות יומית</div>
-        <div class="chart-wrap" style="height:220px"><canvas id="chartTrend" role="img" aria-label="מגמה יומית"></canvas></div>
-      </div>
-      <div class="chart-card full">
-        <div class="chart-title"><span class="ct-icon">🗂</span> סיכום לפי תחנה</div>
-        <div class="table-wrap" id="stationSummaryTable"></div>
+      <div class="chart-card full rg-card" id="stationGaugesCard">
+        <div class="chart-title"><span class="ct-icon">🏪</span> סטטוס דיווח לפי תחנה</div>
+        <div class="rg-stations" id="stationGauges"></div>
       </div>
 
       <div class="chart-card full" id="notesCard">
@@ -452,8 +445,8 @@
 
         <div class="missing-hint">נספרים רק ימי עבודה (א׳–ה׳, ללא שבת/חג) עד היום. סופ״ש וחגים מונחים אוטומטית ואינם נחשבים חסרים.</div>
 
-        <button class="btn-save" onclick="generateMissingReport()" style="width:100%;margin-top:1rem">📄 דוח כולל לתחנות (PDF)</button>
-        <button class="btn-outline" onclick="shareMissingReportText()" style="width:100%;margin-top:.6rem">📋 העתק / שתף דוח כטקסט (וואטסאפ)</button>
+        <button class="btn-save" data-admin-only onclick="generateMissingReport()" style="width:100%;margin-top:1rem">📄 דוח כולל לתחנות (PDF)</button>
+        <button class="btn-outline" data-admin-only onclick="shareMissingReportText()" style="width:100%;margin-top:.6rem">📋 העתק / שתף דוח כטקסט (וואטסאפ)</button>
       </div>
 
       <div id="missingList"></div>
@@ -553,7 +546,7 @@ function togglePasswordVisibility() {
 }
 </script>
 <script async src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js" onload="window.dispatchEvent(new Event('chartjs-ready'))"></script>
-<script defer src="app.js?v=20261028b"></script>
+<script defer src="app.js?v=20261109a"></script>
 
 </body>
 </html>

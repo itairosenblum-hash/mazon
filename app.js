@@ -448,9 +448,12 @@ let currentPage = 'dashboard';
 let editingStationId = null;
 
 function navigate(page) {
-  if (!isAdmin() && ['stations','settings','users','reports','missing'].includes(page)) {
+  if (!isAdmin() && ['stations','settings','users','reports'].includes(page)) {
     page = 'dashboard';
   }
+  // סינון תחנה במסך החסרים נשמר רק כשמגיעים מלחיצה על שעון
+  if (page === 'missing' && !_gapsNavFromGauge) missingStationFilter = '';
+  _gapsNavFromGauge = false;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
@@ -879,8 +882,6 @@ function renderDashboard() {
   // Show date range using getPeriodRange (טווח קלנדרי מלא)
   const { from: fromDate, to: toDate, fullTo } = getPeriodRange(period);
   const calLabel = periodRangeLabel(period, fromDate, toDate, fullTo);
-  document.getElementById('chartPeriodLabel').textContent =
-    period === 1 ? formatDate(toLocalDateStr(toDate)) : calLabel;
   const fmtShort = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
   const dayNames = ['יום ראשון','יום שני','יום שלישי','יום רביעי','יום חמישי','יום שישי','יום שבת'];
   const rangeText = period===1
@@ -997,241 +998,8 @@ function renderDashboard() {
     });
   }
 
-  // Build station data: actual vs required
-  const stationTotals = visibleStations.map(s=>{
-    const stEntries = entries.filter(e=>e.stationId===s.id);
-    const actual = stEntries.length
-      ? Math.round(stEntries.reduce((sum,e)=>sum+totalForEntry(e),0) / stEntries.length)
-      : 0;
-    const required = stEntries.length
-      ? Math.round(stEntries.reduce((sum,e)=>sum+requiredTotalForDate(s,e.date),0) / stEntries.length)
-      : Math.round(avgRequiredTotal([s], periodDatesArr));
-    return { id:s.id, name:s.name, actual, required, stEntries };
-  });
-
-  destroyChart(chartStation);
-  chartStation = safeChart(document.getElementById('chartByStation'),{
-    type:'bar',
-    data:{
-      labels: stationTotals.map(s=>s.name),
-      datasets:[
-        {
-          label:'בפועל (ממוצע יומי)',
-          data: stationTotals.map(s=>s.actual),
-          backgroundColor: stationTotals.map(s=>complianceColor(s.actual,s.required).bg),
-          borderColor: stationTotals.map(s=>complianceColor(s.actual,s.required).border),
-          borderWidth:2, borderRadius:5
-        },
-        {
-          label:'תקן נדרש',
-          data: stationTotals.map(s=>s.required),
-          backgroundColor: 'rgba(140,140,140,0.35)',
-          borderColor: 'rgba(120,120,120,0.9)',
-          borderWidth:2, borderRadius:5
-        }
-      ]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{
-        legend:{
-          display:true, position:'top',
-          labels:{color:C.tick, font:{family:'Heebo',size:11}, padding:12, boxWidth:14}
-        },
-        tooltip:{
-          callbacks:{
-            afterBody: (items) => {
-              const idx = items[0].dataIndex;
-              const s = stationTotals[idx];
-              const pct = s.required>0 ? Math.round((s.actual/s.required)*100) : 100;
-              return ['', `עמידה: ${pct}%`, 'לחץ לפירוט לפי תפקיד'];
-            }
-          }
-        }
-      },
-      onClick:(evt, elements)=>{
-        if(elements.length>0){
-          const idx = elements[0].index;
-          openStationDrilldown(stationTotals[idx], entries, C);
-        }
-      },
-      scales:{
-        x:{ticks:{color:C.tick,font:{family:'Heebo'}},grid:{color:C.grid}},
-        y:{ticks:{color:C.tick},grid:{color:C.grid},
-          title:{display:true,text:'עובדים',color:C.tick,font:{family:'Heebo',size:11}}}
-      }
-    }
-  });
-
-  // Role chart: actual (avg per day) vs required (תקן רגיל/סופ"ש-חג בהתאם לתאריך)
-  const entryDates = entries.length ? [...new Set(entries.map(e=>e.date))] : [];
-  const daysCount = entryDates.length || 1;
-  const requiredDates = entryDates.length ? entryDates : periodDatesArr;
-
-  const roleTotals = state.roles.map((role,i) => {
-    const actualTotal = entries.reduce((s,e)=>s+(e.counts[role]||0), 0);
-    const avgActual = Math.round(actualTotal / daysCount);
-    const required = Math.round(avgRequiredForRole(visibleStations, requiredDates, role));
-    return { role, emoji:roleEmoji(role), avgActual, required, color: C.palette[i%C.palette.length] };
-  }).filter(r => r.avgActual > 0 || r.required > 0);
-
-  // Set dynamic height — generous spacing so all roles fit
-  const isMobile = window.innerWidth <= 768;
-  const rowH = isMobile ? 75 : 52;
-  const padding = isMobile ? 100 : 80;
-  const roleChartH = Math.max(300, roleTotals.length * rowH + padding);
-  const roleWrap = document.querySelector('.chart-roles-wrap');
-  if (roleWrap) roleWrap.style.height = roleChartH + 'px';
-
-  destroyChart(chartRole);
-  chartRole = safeChart(document.getElementById('chartByRole'),{
-    type:'bar',
-    data:{
-      labels: roleTotals.map(r=>r.emoji+' '+r.role),
-      datasets:[
-        {
-          label:'בפועל (ממוצע יומי)',
-          data: roleTotals.map(r=>r.avgActual),
-          backgroundColor: roleTotals.map(r=>complianceColor(r.avgActual,r.required).bg),
-          borderColor: roleTotals.map(r=>complianceColor(r.avgActual,r.required).border),
-          borderWidth:2, borderRadius:4
-        },
-        {
-          label:'תקן נדרש',
-          data: roleTotals.map(r=>r.required),
-          backgroundColor: 'rgba(140,140,140,0.35)',
-          borderColor: 'rgba(120,120,120,0.9)',
-          borderWidth:2, borderRadius:4
-        }
-      ]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      indexAxis:'y',
-      plugins:{
-        legend:{
-          display:true, position:'top',
-          labels:{color:C.tick, font:{family:'Heebo',size:11}, padding:10, boxWidth:12}
-        },
-        tooltip:{
-          callbacks:{
-            afterLabel:(item)=>{
-              if(item.datasetIndex===0){
-                const r=roleTotals[item.dataIndex];
-                if(r.required>0){
-                  const pct=Math.round((r.avgActual/r.required)*100);
-                  const icon=pct>=100?'✅':pct>=70?'⚠️':'❌';
-                  return `${icon} עמידה: ${pct}%`;
-                }
-              }
-              return '';
-            }
-          }
-        }
-      },
-      scales:{
-        x:{ticks:{color:C.tick},grid:{color:C.grid},
-          title:{display:true,text:'עובדים',color:C.tick,font:{family:'Heebo',size:11}}},
-        y:{ticks:{color:C.tick,font:{family:'Heebo',size:11}},grid:{color:C.grid}}
-      }
-    }
-  });
-
-  // Build trend using period range
-  const trendDays = period === 1 ? 30 : period;
-  const trendTo = new Date(toDate);
-  const trendFrom = new Date(trendTo);
-  if (period === 1) { trendFrom.setDate(trendFrom.getDate() - 29); }
-  else { trendFrom.setTime(fromDate.getTime()); }
-  const daysArr = [];
-  for (let d = new Date(trendFrom); d <= trendTo; d.setDate(d.getDate()+1)) {
-    daysArr.push(toLocalDateStr(d));
-  }
-  // Use all entries in the trend window (not just the selected period)
-  // but filtered by station and user permissions
-  let allFilteredEntries = activeEntries()
-    .filter(e=>{ if(!isAdmin()) return currentUser.stationIds.includes(e.stationId); return true; })
-    .filter(e=> selectedStationId ? e.stationId===selectedStationId : true);
-
-  const trendStations = selectedStationId
-    ? visibleStations.filter(s=>s.id===selectedStationId)
-    : visibleStations;
-
-  // בסופ"ש/חג ללא דיווח - מניחים בפועל = תקן סופ"ש/חג
-  allFilteredEntries = injectVirtualEntries(allFilteredEntries, trendStations, daysArr);
-
-  const trendData = daysArr.map(date=>{
-    const dayTotal = allFilteredEntries.filter(e=>e.date===date).reduce((s,e)=>s+totalForEntry(e),0);
-    const dayRequired = trendStations.reduce((s,station)=>s+requiredTotalForDate(station,date),0);
-    const pct = dayRequired > 0 ? Math.min(100, Math.round((dayTotal/dayRequired)*100)) : 0;
-    return { date, total: dayTotal, pct, required: dayRequired };
-  });
-  const maxTicks = trendDays <= 7 ? trendDays : trendDays <= 30 ? 10 : 12;
-  destroyChart(chartTrend);
-  chartTrend = safeChart(document.getElementById('chartTrend'),{
-    type:'line',
-    data:{ labels:daysArr.map(d=>formatDate(d)), datasets:[{
-      label:'אחוז עמידה', data:trendData.map(d=>d.pct),
-      borderColor:'#e8c547', backgroundColor:'rgba(232,197,71,0.07)',
-      fill:true, tension:0.35, pointRadius: trendDays<=7?5:3, pointBackgroundColor:'#e8c547'
-    }]},
-    options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${ctx.parsed.y}% (${trendData[ctx.dataIndex].total} עובדים)`}}},
-      scales:{
-        x:{ticks:{color:C.tick,maxTicksLimit:maxTicks,font:{family:'Heebo'}},grid:{color:C.grid}},
-        y:{min:0,max:100,ticks:{color:C.tick,callback:v=>v+'%'},grid:{color:C.grid}}
-      }
-    }
-  });
-
-  const showAvg = period > 1;
-  const fmtCell = (v, n) => showAvg ? (n ? v / n : 0).toFixed(1) : v;
-  document.getElementById('stationSummaryTable').innerHTML = (showAvg
-    ? '<div style="font-size:0.72rem;color:var(--text3);margin-bottom:8px">ℹ️ הערכים מוצגים כממוצע יומי (בפועל / תקן) לאורך התקופה</div>'
-    : '') + `<table>
-    <thead><tr><th>תחנה</th>${state.roles.map(r=>`<th>${roleEmoji(r)} ${r}</th>`).join('')}<th>סה"כ</th><th>ציות</th></tr></thead>
-    <tbody>${visibleStations.map(station=>{
-      const stEntries=entries.filter(e=>e.stationId===station.id);
-      const dates = stEntries.length ? stEntries.map(e=>e.date) : [today()];
-      const nDays = stEntries.length ? new Set(stEntries.map(e=>e.date)).size : 1;
-      const roleSums={}; const roleReq={}; let sTotal=0, sC=0, sR=0;
-      state.roles.forEach(role=>{
-        const sum=stEntries.reduce((s,e)=>s+(e.counts[role]||0),0);
-        roleSums[role]=sum; sTotal+=sum;
-        const reqTotal=dates.reduce((s,d)=>s+(getStandard(station,d)[role]||0),0);
-        roleReq[role]=reqTotal;
-        if(reqTotal>0){sR++;if(sum>=reqTotal)sC++;}
-      });
-      const pct=sR?Math.round((sC/sR)*100):100;
-      const cls=pct>=90?'badge-ok':pct>=70?'badge-warn':'badge-danger';
-      const totalRequired=state.roles.reduce((s,r)=>s+(roleReq[r]||0),0);
-      return `<tr><td><strong>${escapeHtml(station.name)}</strong></td>${state.roles.map(r=>{
-        const actual=roleSums[r]||0;
-        const req=roleReq[r]||0;
-        const cellCls=req>0?(actual>=req?'cell-ok':actual>=req*0.7?'cell-warn':'cell-danger'):'';
-        return `<td class="${cellCls}">${fmtCell(actual,nDays)}${req>0?` / ${fmtCell(req,nDays)}`:''}</td>`;
-      }).join('')}<td><strong>${fmtCell(sTotal,nDays)}${totalRequired>0?` / ${fmtCell(totalRequired,nDays)}`:''}</strong></td><td><span class="badge ${cls}">${pct}%</span></td></tr>`;
-    }).join('')}${(()=>{
-      const grandRoleSums={}; let grandTotal=0, grandRequired=0;
-      const grandRoleRequired={};
-      state.roles.forEach(r=>{ grandRoleSums[r]=0; grandRoleRequired[r]=0; });
-      visibleStations.forEach(station=>{
-        const stEntries=entries.filter(e=>e.stationId===station.id);
-        const dates = stEntries.length ? stEntries.map(e=>e.date) : [today()];
-        const gDiv = showAvg && stEntries.length ? new Set(stEntries.map(e=>e.date)).size : 1;
-        state.roles.forEach(r=>{
-          const sum=stEntries.reduce((s,e)=>s+(e.counts[r]||0),0)/gDiv;
-          grandRoleSums[r]=(grandRoleSums[r]||0)+sum;
-          grandTotal+=sum;
-          const reqTotal=dates.reduce((s,d)=>s+(getStandard(station,d)[r]||0),0)/gDiv;
-          grandRoleRequired[r]=(grandRoleRequired[r]||0)+reqTotal;
-          grandRequired+=reqTotal;
-        });
-      });
-      const gFmt = v => showAvg ? v.toFixed(1) : v;
-      return `<tr style="border-top:2px solid var(--border);background:var(--bg-secondary)"><td><strong>סה"כ</strong></td>${state.roles.map(r=>{const req=grandRoleRequired[r]||0;const act=grandRoleSums[r]||0;const cls=req>0?(act>=req?'cell-ok':act>=req*0.7?'cell-warn':'cell-danger'):'';return `<td class="${cls}"><strong>${gFmt(act)}${req>0?` / ${gFmt(req)}`:''}</strong></td>`;}).join('')}<td><strong>${gFmt(grandTotal)}${grandRequired>0?` / ${gFmt(grandRequired)}`:''}</strong></td><td></td></tr>`;
-    })()}</tbody></table>`;
-
+  // שעוני סטטוס דיווח (היום / חודש קודם / חודש נוכחי) — כללי ולכל תחנה
+  renderReportGauges(visibleStations);
 
   // Render notes panel
   renderDashboardNotes(entries, period);
@@ -2043,7 +1811,158 @@ function renderReports() {
 }
 
 // ─────────────────────────────────────────────
-// MISSING DAYS PAGE (Admin only)
+// REPORT STATUS GAUGES (Dashboard)
+// ─────────────────────────────────────────────
+var missingStationFilter = '';
+var _gapsNavFromGauge = false;
+
+function monthKeyOf(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function gaugeColor(p) { return p >= 90 ? 'var(--green)' : p >= 70 ? 'var(--orange)' : 'var(--red)'; }
+
+function gaugeSVG(pct, size, stroke, big) {
+  const r = (size - stroke) / 2, cx = size / 2, cy = size / 2;
+  const h = Math.round(size / 2 + stroke / 2 + 2);
+  const L = Math.PI * r;
+  const d = 'M ' + (cx - r) + ' ' + cy + ' A ' + r + ' ' + r + ' 0 0 1 ' + (cx + r) + ' ' + cy;
+  const fill = (pct !== null && pct > 0)
+    ? '<path d="' + d + '" fill="none" stroke="' + gaugeColor(pct) + '" stroke-width="' + stroke + '" stroke-linecap="round" stroke-dasharray="' + (L * pct / 100).toFixed(1) + ' ' + L.toFixed(1) + '"/>'
+    : '';
+  const label = pct === null ? '—' : pct + '%';
+  return '<svg width="' + size + '" height="' + h + '" viewBox="0 0 ' + size + ' ' + h + '" aria-hidden="true">'
+    + '<path d="' + d + '" fill="none" stroke="var(--bg4)" stroke-width="' + stroke + '" stroke-linecap="round"/>'
+    + fill
+    + '<text x="' + cx + '" y="' + (cy - 1) + '" text-anchor="middle" class="rg-num' + (big ? ' big' : '') + '">' + label + '</text>'
+    + '</svg>';
+}
+
+// נתוני סטטוס דיווח: היום (תחנות שדיווחו), חודש קודם וחודש נוכחי (ימי עבודה שדווחו מתוך הנדרשים)
+function reportStatusData(stations) {
+  const now = new Date();
+  const todayStr = today();
+  const curKey = monthKeyOf(now);
+  const prevKey = monthKeyOf(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  const curDays = workingDaysInMonth(curKey);
+  const prevDays = workingDaysInMonth(prevKey);
+  const todayIsWork = !isSpecialDay(todayStr);
+  const reportedBy = {};
+  activeEntries().forEach(e => { (reportedBy[e.stationId] || (reportedBy[e.stationId] = new Set())).add(e.date); });
+  const perStation = stations.map(st => {
+    const set = reportedBy[st.id] || new Set();
+    return {
+      st,
+      today: set.has(todayStr),
+      prevDone: prevDays.filter(d => set.has(d)).length,
+      curDone: curDays.filter(d => set.has(d)).length
+    };
+  });
+  const pct = (done, total) => total > 0 ? Math.round(done / total * 100) : null;
+  const sum = k => perStation.reduce((s, x) => s + x[k], 0);
+  const todayDone = perStation.filter(x => x.today).length;
+  return {
+    curKey, prevKey, curDays, prevDays, todayIsWork, perStation,
+    today: { done: todayDone, total: stations.length, pct: todayIsWork ? pct(todayDone, stations.length) : null },
+    prev:  { done: sum('prevDone'), total: prevDays.length * stations.length, pct: pct(sum('prevDone'), prevDays.length * stations.length) },
+    cur:   { done: sum('curDone'),  total: curDays.length * stations.length,  pct: pct(sum('curDone'),  curDays.length * stations.length) },
+    pctOf: pct
+  };
+}
+
+function monthNameOf(key) { return HE_MONTHS[(+key.split('-')[1]) - 1]; }
+
+function renderReportGauges(stations) {
+  const mainEl = document.getElementById('reportGaugesMain');
+  const listEl = document.getElementById('stationGauges');
+  const stCard = document.getElementById('stationGaugesCard');
+  const scopeEl = document.getElementById('reportGaugesScope');
+  if (!mainEl) return;
+  if (!stations.length) {
+    mainEl.innerHTML = '<div class="rg-empty">אין תחנות להצגה</div>';
+    if (stCard) stCard.style.display = 'none';
+    return;
+  }
+  const D = reportStatusData(stations);
+  const single = stations.length === 1;
+  if (scopeEl) scopeEl.textContent = single ? '— ' + stations[0].name : '— כל התחנות';
+  const stAttr = single ? stations[0].id : '';
+
+  const todayMissing = D.today.total - D.today.done;
+  const prevMissing = D.prev.total - D.prev.done;
+  const curMissing = D.cur.total - D.cur.done;
+  const gapLine = (n, okText, missText) => n === 0
+    ? '<div class="rg-gap ok">✓ ' + okText + '</div>'
+    : '<div class="rg-gap">' + missText + ' ›</div>';
+
+  const main = [
+    {
+      label: 'היום', sub0: formatDate(today()), month: D.curKey, pct: D.today.pct,
+      sub: !D.todayIsWork ? 'סופ״ש / חג' : single ? (D.today.done ? 'דווח' : 'טרם דווח') : D.today.done + '/' + D.today.total + ' תחנות דיווחו',
+      gap: !D.todayIsWork ? '<div class="rg-gap muted">אין חובת דיווח</div>'
+        : gapLine(todayMissing, single ? 'דווח' : 'כל התחנות דיווחו', single ? 'טרם דווח' : (todayMissing === 1 ? 'תחנה אחת לא דיווחה' : todayMissing + ' תחנות לא דיווחו'))
+    },
+    {
+      label: 'חודש קודם', sub0: monthNameOf(D.prevKey), month: D.prevKey, pct: D.prev.pct,
+      sub: D.prev.done + '/' + D.prev.total + ' ימי דיווח',
+      gap: gapLine(prevMissing, 'אין חוסרים', (prevMissing === 1 ? 'יום אחד חסר' : prevMissing + ' ימים חסרים'))
+    },
+    {
+      label: 'חודש נוכחי', sub0: monthNameOf(D.curKey), month: D.curKey, pct: D.cur.pct,
+      sub: D.curDays.length ? D.cur.done + '/' + D.cur.total + ' ימי דיווח' : 'אין עדיין ימי עבודה',
+      gap: D.curDays.length ? gapLine(curMissing, 'אין חוסרים', (curMissing === 1 ? 'יום אחד חסר' : curMissing + ' ימים חסרים')) : ''
+    }
+  ];
+  mainEl.innerHTML = main.map(g =>
+    '<button type="button" class="rg-gauge" data-month="' + g.month + '" data-station="' + stAttr + '">'
+    + gaugeSVG(g.pct, 104, 11, true)
+    + '<div class="rg-label">' + g.label + '</div>'
+    + '<div class="rg-sub0">' + g.sub0 + '</div>'
+    + '<div class="rg-sub">' + g.sub + '</div>' + g.gap + '</button>').join('');
+
+  // לכל תחנה — אותם 3 שעונים (מוסתר כשיש תחנה אחת בלבד, כי השעונים הכלליים הם של התחנה)
+  if (stCard) stCard.style.display = single ? 'none' : '';
+  if (listEl && !single) {
+    const users = (state.users || []);
+    listEl.innerHTML = D.perStation.map(x => {
+      const mgrs = users.filter(u => u.role !== 'admin' && (u.stationIds || []).includes(x.st.id)).map(u => escapeHtml(u.name));
+      const cells = [
+        { pct: D.todayIsWork ? (x.today ? 100 : 0) : null, month: D.curKey,
+          label: 'היום · ' + (!D.todayIsWork ? 'סופ״ש/חג' : x.today ? 'דווח' : 'לא דווח') },
+        { pct: D.pctOf(x.prevDone, D.prevDays.length), month: D.prevKey,
+          label: monthNameOf(D.prevKey) + ' · ' + x.prevDone + '/' + D.prevDays.length },
+        { pct: D.pctOf(x.curDone, D.curDays.length), month: D.curKey,
+          label: monthNameOf(D.curKey) + ' · ' + x.curDone + '/' + D.curDays.length }
+      ];
+      return '<div class="rg-station">'
+        + '<div class="rg-st-head"><span class="rg-st-name">' + escapeHtml(x.st.name) + '</span>'
+        + (mgrs.length ? '<span class="rg-st-mgr">👤 ' + mgrs.join(', ') + '</span>' : '') + '</div>'
+        + '<div class="rg-mini">' + cells.map(c =>
+            '<button type="button" class="rg-gauge mini" data-month="' + c.month + '" data-station="' + x.st.id + '">'
+            + gaugeSVG(c.pct, 66, 7, false)
+            + '<div class="rg-mini-label">' + c.label + '</div></button>').join('')
+        + '</div></div>';
+    }).join('');
+  }
+}
+
+// לחיצה על שעון → מסך הפערים (ימים חסרים) מסונן לחודש ולתחנה
+function openGapsFromGauge(month, stationId) {
+  const monthEl = document.getElementById('missingMonth');
+  if (monthEl && month) monthEl.value = month;
+  missingStationFilter = stationId || '';
+  _gapsNavFromGauge = true;
+  navigate('missing');
+  document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === 'missing'));
+  window.scrollTo(0, 0);
+}
+function clearMissingStationFilter() { missingStationFilter = ''; renderMissingDays(); }
+
+document.addEventListener('click', e => {
+  const g = e.target.closest('.rg-gauge');
+  if (!g) return;
+  openGapsFromGauge(g.dataset.month, g.dataset.station);
+});
+
+// ─────────────────────────────────────────────
+// MISSING DAYS PAGE (Admin: all stations · station user: own stations)
 // ─────────────────────────────────────────────
 
 // ימי עבודה (א׳–ה׳, ללא שבת/חג) בחודש נתון, עד היום (כולל היום)
@@ -2091,7 +2010,19 @@ function renderMissingDays() {
   const monthStr = monthEl ? monthEl.value : (now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0'));
 
   const workDays = workingDaysInMonth(monthStr);
-  const stations = (state && state.stations) ? state.stations : [];
+  let stations = (state && state.stations) ? allowedStations() : [];
+  let filterBar = '';
+  if (missingStationFilter) {
+    const fs = stations.filter(s => s.id === missingStationFilter);
+    if (fs.length) {
+      stations = fs;
+      filterBar = '<div class="missing-filter">מוצגת תחנה: <strong>' + escapeHtml(fs[0].name) + '</strong>'
+        + (allowedStations().length > 1 ? ' <button class="missing-filter-clear" onclick="clearMissingStationFilter()">הצג את כל התחנות ✕</button>' : '')
+        + '</div>';
+    } else {
+      missingStationFilter = '';
+    }
+  }
 
   if (!stations.length) {
     list.innerHTML = '<div class="missing-card"><div class="missing-empty">אין תחנות במערכת.</div></div>';
@@ -2122,7 +2053,9 @@ function renderMissingDays() {
 
     let reminder = '';
     const withPhone = managers.filter(function(u){ return !!u.phone; });
-    if (withPhone.length) {
+    if (!isAdmin()) {
+      reminder = '';
+    } else if (withPhone.length) {
       reminder = '<div class="missing-remind">' + withPhone.map(function(u){
         return '<button class="missing-remind-btn" onclick="sendMissingDaysReminder(\'' + u.id + '\',\'' + st.id + '\')">'
           + '📲 שלח תזכורת ל-' + escapeHtml(u.name) + '</button>';
@@ -2147,7 +2080,7 @@ function renderMissingDays() {
         : 'סה״כ <strong>' + totalMissing + '</strong> ימים חסרים ב-<strong>' + stationsWithMissing + '</strong> תחנות · מתוך ' + workDays.length + ' ימי עבודה בחודש.')
     + '</div>';
 
-  list.innerHTML = summary + cards;
+  list.innerHTML = filterBar + summary + cards;
 }
 
 function sendMissingDaysReminder(userId, stationId) {
