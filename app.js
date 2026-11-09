@@ -33,7 +33,14 @@ function toggleTheme() {
   if (currentPage === 'dashboard') renderDashboard();
 }
 
+// צבע פסי המערכת בטלפון (שורת הסטטוס וסרגל הניווט) — לבן בבהיר, כהה בכהה
+function updateThemeColorMeta(theme) {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#161616' : '#ffffff');
+}
+
 function updateThemeLabel(theme) {
+  updateThemeColorMeta(theme);
   const el = document.getElementById('themeLabel');
   if (el) el.textContent = theme === 'dark' ? 'מצב כהה' : 'מצב בהיר';
   updateTopbarTheme(theme);
