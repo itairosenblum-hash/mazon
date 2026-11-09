@@ -361,7 +361,7 @@ body::before {
   scroll-snap-align: start;
 }
 .bottom-nav-item .bn-icon { font-size: 1.3rem; line-height: 1; }
-.bottom-nav-item.active { color: var(--accent); }
+.bottom-nav-item.active { color: var(--text); font-weight: 700; }
 .bottom-nav-item:hover { color: var(--text); }
 
 /* ══════════════════════════════
@@ -430,8 +430,8 @@ body::before {
 .summary-card::before {
   content: '';
   position: absolute;
-  top: 0; right: 0;
-  width: 3px; height: 100%;
+  top: 0; right: 0; left: 0;
+  height: 3px;
   background: var(--card-color, var(--accent));
 }
 .summary-card .food-deco {
@@ -1442,7 +1442,7 @@ tr:hover td { background: var(--bg3); }
 .dashboard-note-station {
   font-weight: 700;
   font-size: 0.88rem;
-  color: var(--accent);
+  color: var(--text);
 }
 .dashboard-note-date {
   font-family: "Space Mono", monospace;
